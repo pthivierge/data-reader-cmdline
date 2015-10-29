@@ -67,7 +67,7 @@ namespace DataReader.CommandLine
         {
             init(options);
 
-            _logger.Info("starting gathering data in bulk");
+            _logger.InfoFormat("starting gathering data in bulk for period {0} to {1}", options.StartTime, options.EndTime);
 
             var totalDuration = Stopwatch.StartNew();
 
@@ -75,29 +75,33 @@ namespace DataReader.CommandLine
             var st = new AFTime(options.StartTime);
             var et = new AFTime(options.EndTime);
             var intervalDuration = et - st;
-            var querySpan = intervalDuration.TotalMilliseconds / options.Intervals;
+            var querySpanMilliSeconds = intervalDuration.TotalMilliseconds / options.Intervals;
 
             // prepares the point list
             var points = PIPoint.FindPIPoints(_piServer, options.Tags);
             var ptList = new PIPointList(points);
 
+
             for (var i = 0; i < options.Intervals; i++)
             {
                 
-                _logger.InfoFormat("Query sent for interval {0}, {1} to {2}", i,st + TimeSpan.FromMilliseconds(i * querySpan), et + TimeSpan.FromMilliseconds(i * querySpan));
-
-                var timeRange = new AFTimeRange(st + TimeSpan.FromMilliseconds(i * querySpan),et + TimeSpan.FromMilliseconds(i * querySpan));
+                var intervalStart = st + TimeSpan.FromMilliseconds(i*querySpanMilliSeconds);
+                var intervalEnd = st + TimeSpan.FromMilliseconds((i+1) * querySpanMilliSeconds);
                 
+                _logger.InfoFormat("Query sent for interval {0}, {1} to {2}", i, intervalStart, intervalEnd);
+
+                var timeRange = new AFTimeRange(intervalStart, intervalEnd);
+
                 // sends the data call, for all tags at the same time to the PI Data Archive
-                var data = ptList.PlotValues(timeRange, options.PlotValuesIntervals,new PIPagingConfiguration(PIPageType.TagCount, 1000));
+                var data = ptList.PlotValues(timeRange,options.PlotValuesIntervals, new PIPagingConfiguration(PIPageType.TagCount, 1000));
 
                 // adds the raw data into the processor queue
                 _dataProcessor.DataQueue.Add(data);
             }
-            
+
             // tell that we are done with adding new data to the data processor.  The task will complete after that
             _dataProcessor.DataQueue.CompleteAdding();
-            
+
             // wait for all tasks to complete: data processor and data reader
             _logger.InfoFormat("Waiting for remaining tasks to complete");
             Task.WaitAll(_tasks.ToArray());
@@ -105,7 +109,7 @@ namespace DataReader.CommandLine
             totalDuration.Stop();
 
             var totalSeconds = TimeSpan.FromMilliseconds(totalDuration.ElapsedMilliseconds).TotalSeconds;
-            
+
             _logger.InfoFormat(" RESULT > Entire operation completed in {0} seconds", totalSeconds);
             _logger.InfoFormat(" RESULT > Processed {0} events", _dataProcessor.TotalEventProcessed);
             _logger.InfoFormat(" RESULT > Read and processing rate of {0} events/sec", Math.Round(_dataProcessor.TotalEventProcessed / totalSeconds, 0));
