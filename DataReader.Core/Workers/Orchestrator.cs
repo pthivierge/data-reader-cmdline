@@ -13,8 +13,9 @@ namespace DataReader.Core
     /// </summary>
     public class Orchestrator : TaskBase
     {
-        public BlockingCollection<DataQuery> IncomingPiPoints=new BlockingCollection<DataQuery>();
+        public BlockingCollection<DataQuery> IncomingPiPoints = new BlockingCollection<DataQuery>();
         public readonly ConcurrentQueue<DataQuery> PointsToRead = new ConcurrentQueue<DataQuery>();
+        private static int _queryId = 0;
         IDataReader _dataReader;
 
         List<DateTime> _datesIntervals;
@@ -24,31 +25,33 @@ namespace DataReader.Core
             // prepares dates to read
             var st = new AFTime(startTime);
             var et = new AFTime(endTime);
-            
-            _logger.InfoFormat("Getting time intervals: {0},{1},{2}",interval.TotalSeconds,st,et);
+
+            _logger.InfoFormat("Getting time intervals: {0},{1},{2}", interval.TotalSeconds, st, et);
             _datesIntervals = TimeStampsGenerator.Get(interval, st, et);
 
-            _logger.InfoFormat("Will work with {0} dates intervals",_datesIntervals.Count);
+            _logger.InfoFormat("Will work with {0} dates intervals", _datesIntervals.Count);
 
             _dataReader = dataReader;
         }
 
 
+
         protected override void DoTask(CancellationToken cancelToken)
         {
             _logger.Info("Orchestrator started and ready to receive tags to send data queries to the DataReader");
-            
+
             // process the first intervall
             foreach (var dataQuery in IncomingPiPoints.GetConsumingEnumerable(cancelToken))
             {
 
                 dataQuery.StartTime = _datesIntervals[0];
                 dataQuery.EndTime = _datesIntervals[1];
+                dataQuery.QueryId = _queryId++;
 
                 // keep the taglist for the next time period query
                 PointsToRead.Enqueue(dataQuery);
 
-                _dataReader.GetQueriesQueue().Add(dataQuery,cancelToken);
+                _dataReader.GetQueriesQueue().Add(dataQuery, cancelToken);
 
             }
 
@@ -61,15 +64,21 @@ namespace DataReader.Core
             // for each time period, triggers the read for all the tags
             for (var i = 2; i < _datesIntervals.Count - 1; i++)
             {
-                if(cancelToken.IsCancellationRequested)
+                if (cancelToken.IsCancellationRequested)
                     break;
 
                 foreach (var dataQuery in PointsToRead)
                 {
-                    dataQuery.StartTime = _datesIntervals[i];
-                    dataQuery.EndTime = _datesIntervals[i+1];
+                    var newQuery = new DataQuery()
+                    {
+                        StartTime = _datesIntervals[i],
+                        EndTime = _datesIntervals[i + 1],
+                        QueryId = _queryId++,
+                        PiPoints = dataQuery.PiPoints
+                    };
 
-                    _dataReader.GetQueriesQueue().Add(dataQuery, cancelToken);
+
+                    _dataReader.GetQueriesQueue().Add(newQuery, cancelToken);
 
                     if (cancelToken.IsCancellationRequested)
                         break;
@@ -86,4 +95,5 @@ namespace DataReader.Core
 
 
     }
+
 }

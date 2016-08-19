@@ -41,7 +41,7 @@ namespace DataReader.Core
 
                 foreach (var dataInfo in DataQueue.GetConsumingEnumerable(cancelToken))
                 {
-                    // this will force enumeration of all the values, and may proceed with remaining data calls that were not yet completed
+                    
                     var listData = dataInfo.Data.ToList();
 
                     var count = listData.Sum(v => v.Count);

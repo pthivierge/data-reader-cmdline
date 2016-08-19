@@ -56,7 +56,7 @@ namespace DataReader.Core
             foreach (var query in QueriesQueue.GetConsumingEnumerable(cancelToken))
             {
                 var timeRange = new AFTimeRange(query.StartTime,query.EndTime);
-                GetRecordedValuesBulkParrallel(query.PiPoints, timeRange, _dataReaderSettings.BulkPageSize, _dataReaderSettings.MaxDegreeOfParallelism, _dataReaderSettings.BulkParallelChunkSize, cancelToken);
+                GetRecordedValuesBulkParrallel(query, timeRange, _dataReaderSettings.BulkPageSize, _dataReaderSettings.MaxDegreeOfParallelism, _dataReaderSettings.BulkParallelChunkSize, cancelToken);
 
             }
 
@@ -71,13 +71,13 @@ namespace DataReader.Core
         /// This method splits a point list into severall smaller lists and perform bulk calls on each list
         /// In parallel.  
         /// </summary>
-        private void GetRecordedValuesBulkParrallel(List<PIPoint> points, AFTimeRange timeRange, int bulkPageSize, int maxDegOfParallel, int bulkParallelChunkSize, CancellationToken cancelToken)
+        private void GetRecordedValuesBulkParrallel(DataQuery query, AFTimeRange timeRange, int bulkPageSize, int maxDegOfParallel, int bulkParallelChunkSize, CancellationToken cancelToken)
         {
 
-            _logger.WarnFormat("Performing queries in BULK PARALLEL - MAX DEG. PAR. {0}, TAG_CHUNK_SIZE {1}, TAG_PAGE_SIZE {2}, PERIOD: {3} to {4}", maxDegOfParallel, bulkParallelChunkSize, bulkPageSize, timeRange.StartTime,timeRange.EndTime);
+            _logger.WarnFormat("QUERY BULK PARALLEL {5} - PERIOD: {3} to {4} - MAX DEG. PAR. {0}, TAG_CHUNK_SIZE {1}, TAG_PAGE_SIZE {2},", maxDegOfParallel, bulkParallelChunkSize, bulkPageSize, timeRange.StartTime,timeRange.EndTime, query.QueryId);
 
             // PARALLEL bulk 
-            var pointListList = points.ToList().ChunkBy(bulkParallelChunkSize);
+            var pointListList = query.PiPoints.ToList().ChunkBy(bulkParallelChunkSize);
             Parallel.ForEach(pointListList, new ParallelOptions { MaxDegreeOfParallelism = maxDegOfParallel,CancellationToken = cancelToken },
                 pts =>
                 {

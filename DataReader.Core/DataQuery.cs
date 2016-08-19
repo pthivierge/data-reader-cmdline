@@ -13,5 +13,7 @@ namespace DataReader.Core
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
 
+        public int QueryId { get; set; }
+
     }
 }

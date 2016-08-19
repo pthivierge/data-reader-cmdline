@@ -37,8 +37,6 @@ Read values for the last 30 days and output the result into a file:
 
 
 
-
-
 # Usage
 
 
@@ -101,6 +99,13 @@ Read values for the last 30 days and output the result into a file:
 
      --eventsPerFile              (Default: 50000) Number of events to write per
                                   file
+
+#Notes
+
+On a server with about 6000 tags, the following command gave very good read results.
+It has yet to be tested on a server with a lot more tags.
+
+`DataReader.exe -s PIServer01 -t * --st *-30d --et * --estimatedEventsPerDay 4 --estimatedTagscount 6207 --eventsPerRead 150000`
 
 
 [1]:https://techsupport.osisoft.com/Documentation/PI-AF-SDK/html/b8fbb6da-7a4b-4570-a09d-7f2b85ed204d.htm

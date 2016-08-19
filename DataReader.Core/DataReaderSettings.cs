@@ -71,7 +71,7 @@ namespace DataReader.Core
         /// <param name="estimatedTagsCount"> Estimation of the total amount of tags that needs to be processed.</param>
         /// <param name="eventsPerRead">Defines the number of events that should be read per data call. Default 1000. somewhere between 10000 and 50000 is a good start.</param>
         /// <param name="readType">Type of read that you want to perform.  Bulk performs better if network has latency.  Paralell can outperform bulk if latency is low.</param>
-        public void AutoTune(ReadingType readType, int estimatedEventsPerDay, int estimatedTagsCount, int eventsPerRead = 20000)
+        public void AutoTune(ReadingType readType, int estimatedEventsPerDay, int estimatedTagsCount, int eventsPerRead)
         {
             
 
@@ -79,7 +79,9 @@ namespace DataReader.Core
 
             if (estimatedTagsCount < 200000)
             {
-                TagGroupSize = estimatedTagsCount / 10;
+                TagGroupSize = estimatedTagsCount/10;
+
+                TagGroupSize = TagGroupSize <= 0 ? 1 : TagGroupSize;
 
             }
             else
@@ -93,7 +95,7 @@ namespace DataReader.Core
                 // bulkPageSize is the number of tags that will be queried per page.
                 BulkPageSize = 1000;
                 days = ((double)eventsPerRead / ((double)estimatedEventsPerDay*BulkPageSize));
-                BulkParallelChunkSize = TagGroupSize/5;
+                BulkParallelChunkSize = (TagGroupSize/5) <=1 ? 1 : (TagGroupSize / 5);
 
             }
             else
