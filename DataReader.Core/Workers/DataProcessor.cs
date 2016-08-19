@@ -3,50 +3,60 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 using log4net.Core;
 using OSIsoft.AF.Asset;
 
-namespace DataReader.CommandLine.DataOperations
+namespace DataReader.Core
 {
     /// <summary>
     /// This class makes the data processing
     /// It also keeps the count of the number of events processed
     /// IF applies, forwards the events to the data writer to have the data written
     /// </summary>
-    public class DataProcessor
+    public class DataProcessor : TaskBase
     {
         private readonly ILog _logger = LogManager.GetLogger(typeof(DataProcessor));
-        private readonly BlockingCollection<IEnumerable<AFValues>> _dataQueue = new BlockingCollection<IEnumerable<AFValues>>();
+        public readonly BlockingCollection<DataInfo> DataQueue = new BlockingCollection<DataInfo>();
+
+        bool _enableWrite;
+        DataWriter _dataWriter;
+
         public int TotalEventProcessed { get; private set; }
 
-        public BlockingCollection<IEnumerable<AFValues>> DataQueue
+
+        public  DataProcessor(bool enableWrite,DataWriter dataWriter)
         {
-            get { return _dataQueue; }
+            _enableWrite = enableWrite;
+            _dataWriter = dataWriter;
         }
 
-        public void Run(bool enableWrite,DataWriter dataWriter)
+        protected override void DoTask(CancellationToken cancelToken)
         {
             try
             {
                 _logger.Info("Starting the process data task");
 
-                foreach (var data in _dataQueue.GetConsumingEnumerable())
+                foreach (var dataInfo in DataQueue.GetConsumingEnumerable(cancelToken))
                 {
                     // this will force enumeration of all the values, and may proceed with remaining data calls that were not yet completed
-                    var listData = data.ToList();
+                    var listData = dataInfo.Data.ToList();
 
                     var count = listData.Sum(v => v.Count);
 
                     TotalEventProcessed += count;
 
+                    // working out some stats
+                    dataInfo.StatsInfo.EventsCount = count;
+                    dataInfo.StatsInfo.Stopwatch.Stop();
+                    Statistics.StatisticsQueue.Add(dataInfo.StatsInfo,cancelToken);
 
-                    _logger.InfoFormat("Processed {0} values", count);
 
-                    if (enableWrite)
+                    if (_enableWrite)
                     {
-                        dataWriter.DataQueue.Add(listData);
+                        _dataWriter.DataQueue.Add(listData,cancelToken);
                     }
                 }
             }
@@ -58,9 +68,8 @@ namespace DataReader.CommandLine.DataOperations
             }
             finally
             {
-                dataWriter.DataQueue.CompleteAdding();
+                _dataWriter.DataQueue.CompleteAdding();
             }
         }
-
     }
 }

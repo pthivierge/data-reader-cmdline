@@ -17,7 +17,10 @@
 #endregion
 
 using System;
+using System.Linq;
+using System.Threading.Tasks;
 using CommandLine;
+using DataReader.Core;
 using log4net;
 
 namespace DataReader.CommandLine
@@ -30,21 +33,103 @@ namespace DataReader.CommandLine
     {
         private static void Main(string[] args)
         {
-            var _logger = LogManager.GetLogger(typeof (Program));
+
+            PIConnection piConnection;
+            var _logger = LogManager.GetLogger(typeof(Program));
             var writer = Console.Out;
 
             try
             {
-                
-                _logger.Info("Data reading testing starting...");
+
+              
 
                 var options = new CommandLineOptions();
 
-                if (Parser.Default.ParseArguments(args,options))
+
+                if (Parser.Default.ParseArguments(args, options))
                 {
-                    var dataReader = DataReadersFactory.GetReader(options.Mode);
-                    dataReader.Run(options);
-                    _logger.Info("Operation Completed");
+
+                    var readerSettings = new DataReaderSettings();
+                    piConnection = new PIConnection(options.Server);
+
+                    if (options.testTagSearch != null && options.testTagSearch.Length > 0)
+                    {
+                        _logger.Info("Search test started...");
+
+                        piConnection.Connect();
+
+                        var search = new TagsLoader(piConnection.GetPiServer());
+                        foreach (var s in options.testTagSearch)
+                        {
+                            var tags = search.Search(s).ToList();
+                            _logger.WarnFormat("Found {0} tags with query {1}", tags.Count, s);
+
+                            if (options.testTagSearchPrintAllTags)
+                            {
+                                tags.ForEach(t => _logger.InfoFormat("Tag: {0}, PointClass: {1}", t.Name, t.PointClass));
+                            }
+
+                        }
+
+                    }
+
+                    if (options.TagQueries != null && options.TagQueries.Length > 0)
+                    {
+
+                        _logger.Info("Data reader starting...");
+
+                        IDataReader dataReader;
+                        piConnection.Connect();
+
+                        if (options.EventsPerDay > 0 && options.TagsCount > 0)
+                        {
+                            var type = options.UseParallel? DataReaderSettings.ReadingType.Parallel: DataReaderSettings.ReadingType.Bulk;
+
+                            readerSettings.AutoTune(type, options.EventsPerDay,options.TagsCount,options.EventsPerRead);
+                        }
+                        
+
+                        // starts the data writer
+
+                        _logger.Info("Creating worker objects...");
+                        var dataWriter = new DataWriter(options.OutfileName,options.EventsPerFile);
+                        var dataProcessor = new DataProcessor(options.EnableWrite, dataWriter);
+
+                        dataReader = options.UseParallel
+                            ? (IDataReader) new DataReaderParallel(readerSettings, dataProcessor)
+                            : new DataReaderBulk(readerSettings, dataProcessor);
+
+                        var orchestrator = new Orchestrator(options.StartTime, options.EndTime, readerSettings.TimeIntervalPerDataRequest, dataReader);
+                        var tagsLoader = new TagsLoader(piConnection.GetPiServer(), options.TagQueries, readerSettings.TagGroupSize, orchestrator);
+                        var statistics=new Statistics();
+
+                        // starts the orchestrator
+                        _logger.Info("Starting workers...");
+                        var tagsLoaderTask = tagsLoader.Run();
+                        var writerTask = dataWriter.Run();
+                        var processorTask = dataProcessor.Run();
+                        var orchestratorTask = orchestrator.Run();
+                        var dataReaderTask = dataReader.Run();
+                        var statsTask = statistics.Run();
+
+
+
+
+                        // starts the data reader
+                        Task.WaitAll(orchestratorTask, writerTask, dataReaderTask, tagsLoaderTask, processorTask);
+
+                        statistics.Stop();
+
+                        Task.WaitAll(statsTask);
+
+                        _logger.Info("All tasks completed successfully");
+
+                    }
+
+
+
+
+
 
                     // DEBUG
                     //  Console.ReadKey();

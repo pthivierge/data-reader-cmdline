@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace DataReader.CommandLine.Helpers
+namespace DataReader.Core
 {
     public static class ExtensionMethods
     {
@@ -32,7 +32,7 @@ namespace DataReader.CommandLine.Helpers
         /// </summary>
         public static string ToIsoReadable(this DateTime dateTime)
         {
-            return dateTime.ToString("yyyy-MM-dd_HH'.'mm'.'ss");
+            return dateTime.ToString("yyyy-MM-dd_HH'.'mm'.'ss'.'ffff");
         }
 
         /// <summary>

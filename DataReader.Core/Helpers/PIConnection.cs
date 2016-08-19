@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using log4net;
 using OSIsoft.AF.PI;
 
-namespace DataReader.CommandLine
+namespace DataReader.Core
 {
     /// <summary>
     ///     Helps managing connection to PI Server
@@ -59,7 +59,7 @@ namespace DataReader.CommandLine
 
             try
             {
-                _piServer.Connect(true, null);
+                _piServer.Connect();
 
                 _logger.InfoFormat("Connected to {0}. As {1}", _piServer.Name, _piServer.CurrentUserName);
                 return true;

@@ -1,8 +1,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Program", "Program\Program.csproj", "{C870F4C0-4EA7-430E-B3CB-2FBACF9804D5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataReader.CommandLine", "Program\DataReader.CommandLine.csproj", "{C870F4C0-4EA7-430E-B3CB-2FBACF9804D5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{FF9C9BB2-5B1B-4DFA-990D-8877B1F22A33}"
 	ProjectSection(SolutionItems) = preProject
@@ -16,6 +16,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFiles", "SolutionFi
 		LICENSE = LICENSE
 		README.md = README.md
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataReader.Core", "DataReader.Core\DataReader.Core.csproj", "{C775B59A-AEB0-40E6-87A1-8F47508D357E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -43,6 +45,22 @@ Global
 		{C870F4C0-4EA7-430E-B3CB-2FBACF9804D5}.Release|x64.ActiveCfg = Release|x64
 		{C870F4C0-4EA7-430E-B3CB-2FBACF9804D5}.Release|x86.ActiveCfg = Release|x86
 		{C870F4C0-4EA7-430E-B3CB-2FBACF9804D5}.Release|x86.Build.0 = Release|x86
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|x64.Build.0 = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Debug|x86.Build.0 = Debug|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|x64.ActiveCfg = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|x64.Build.0 = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|x86.ActiveCfg = Release|Any CPU
+		{C775B59A-AEB0-40E6-87A1-8F47508D357E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

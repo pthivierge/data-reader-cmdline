@@ -31,18 +31,32 @@ namespace DataReader.CommandLine
         [Option('s', "server", HelpText = "PI Data Archive Server name to connect",Required = true)]
         public string Server { get; set; }
 
+        [OptionArray('t', "tagQueries", HelpText = "Queries to load the tags, the more you add the best and the sooner that app will start reading data. This option accepts many queries separeted by a space. e.g. sinus* SSN_NP60* \"tag:<>sin* DataType:Float\"")]
+        public string[] TagQueries { get; set; }
+
+        [OptionArray("testTagSearch", HelpText = "Makes a serch will all passed filters and prints the results to the screen. e.g. sinus* SSN_NP60* \"tag:<>sin* DataType:Float\"", MutuallyExclusiveSet = "TestTagSearch")]
+        public string[] testTagSearch { get; set; }
+
+        [Option("PrintTags", HelpText = "Print all tag names when doing the testTagSearch", MutuallyExclusiveSet = "TestTagSearch")]
+        public bool testTagSearchPrintAllTags { get; set; }
+
+        [Option("estimatedEventsPerDay", HelpText = "provides an estimate of the number of events per tag per day, to help optimising the speed of reading", DefaultValue = 4)]
+        public int EventsPerDay { get; set; }
+
+        [Option("estimatedTagsCount", HelpText = "estimate of the total number of tags that will be read, this will also help optimizing the application", DefaultValue = 10000)]
+        public int TagsCount { get; set; }
+
+
+        [Option('p',"parallel", HelpText = "Gather data using parallel calls instead of bulk-Parrallel.  This is another good performing technique, it uses more network calls though.  depending on your network this may or may not give good performances.")]
+        public bool UseParallel { get; set; }
+
+
         [Option("st", HelpText = "Start Time to query data", DefaultValue = "*-1d")]
         public string StartTime { get; set; }
 
         [Option("et", HelpText = "End Time to query data", DefaultValue = "*")]
         public string EndTime { get; set; }
-
-        [Option('i', "intervalsCount", HelpText = "Splits the main interval into sub-intervals. i.e. 30d span / 30 (intervalsCount) = 30 calls for 1 day.", DefaultValue = 1)]
-        public int Intervals { get; set; }
-
-        [Option('p', "plotValuesIntervals", HelpText = "Number of intervalls to pass to the plotvalues calls", DefaultValue = 1024)]
-        public int PlotValuesIntervals { get; set; }
-
+        
         [Option("enableWrite", HelpText = "Outputs the data into text files", DefaultValue = false, MutuallyExclusiveSet = "WriteData")]
         public bool EnableWrite { get; set; }
 
@@ -52,11 +66,9 @@ namespace DataReader.CommandLine
         [Option("eventsPerFile", HelpText = "Number of events to write per file", DefaultValue = 50000, MutuallyExclusiveSet = "WriteData")]
         public int EventsPerFile { get; set; }
 
-        [Option('q', "queryMode", HelpText = "Mode of data query. Currenlty allowed values: Bulk", DefaultValue = "Bulk")]
-        public string Mode { get; set; }
+        [Option("eventsPerRead", HelpText ="Defines how many events should be read per data call.", DefaultValue = 10000)]
+        public int EventsPerRead { get; set; }
 
-        [OptionArray('t', "tagsList", HelpText = "List of tags to query data for default: sinusoid cdt158", DefaultValue = new[] { "sinusoid", "cdt158" })]
-        public string[] Tags { get; set; }
 
         [HelpOption]
         public string GetUsage()

@@ -11,10 +11,10 @@ Once compiled, it created a **Build** folder in the solution folder.  You can ta
 
 # Getting started
 Read plot values for the last 30 days:  
-`datareader.exe -s optimus --st *-30d --et * -t Tag1 Tag2 Tag3 Tag4`;
+`datareader.exe -s PIServer01 --st *-30d --et * -t Tag1 Tag2 Tag3 Tag4`;
 
 Read plot values for the last 30 days and output the result into a file:  
-`datareader.exe -s optimus --st *-30d --et * -t Tag1 Tag2 Tag3 Tag4 --enableWrite --outFileName C:\Temp\data`;
+`datareader.exe -s PIServer01 --st *-30d --et * -t Tag1 Tag2 Tag3 Tag4 --enableWrite --outFileName C:\Temp\data`;
 
 For plotvalues intervals parameter, see [AFListData, PlotValues Method Documentation](information[1:https://techsupport.osisoft.com/Documentation/PI-AF-SDK/html/M_OSIsoft_AF_Data_AFListData_PlotValues.htm)
 
