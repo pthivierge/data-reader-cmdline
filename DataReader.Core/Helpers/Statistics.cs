@@ -103,10 +103,11 @@ namespace DataReader.Core
                     {
 
                         _logger.InfoFormat(
-                            "READ STATS - global-> processing rate: {0:#00.00} events/sec | Total Events: {1:#000} | Duration: {2}"
+                            "READ STATS - global-> processing rate: {0:#00.00} events/sec | Total Events: {1:#000} | Duration: {2:g} | WriteQ: {3}"
                             , Math.Round(_totalEventsCount / _stopwatch.Elapsed.TotalSeconds, 2)
                             , _totalEventsCount
                             , _stopwatch.Elapsed
+                            , statInfo.EventsInWritingQueue
 
 
                             );
@@ -114,7 +115,7 @@ namespace DataReader.Core
                         if (statInfo.EventsCount > 0)
                         {
                             _logger.InfoFormat(
-                                "READ STATS - Last query-> processing rate: {0:#00.00} events/sec | Total Events: {1:#000} | Duration: {2}"
+                                "READ STATS - Last query-> processing rate: {0:#00.00} events/sec | Total Events: {1:#000} | Duration: {2:g}"
                                 , statInfo.EventsProcessedPerSecond
                                 , statInfo.EventsCount
                                 , TimeSpan.FromMilliseconds(statInfo.Stopwatch.ElapsedMilliseconds)

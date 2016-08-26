@@ -9,7 +9,7 @@ namespace DataReader.Core
     public class DataQuery
     {
 
-        public List<PIPoint> PiPoints { get; set; }
+        public List<PIPoint> PiPoints { get; set; } = new List<PIPoint>();
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
 

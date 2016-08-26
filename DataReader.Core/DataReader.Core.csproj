@@ -52,6 +52,7 @@
     <Compile Include="DataInfo.cs" />
     <Compile Include="DataQuery.cs" />
     <Compile Include="Helpers\ExtensionMethods.cs" />
+    <Compile Include="Helpers\FileWriter.cs" />
     <Compile Include="Helpers\PIConnection.cs" />
     <Compile Include="Helpers\Statistics.cs" />
     <Compile Include="Helpers\StatisticsInfo.cs" />

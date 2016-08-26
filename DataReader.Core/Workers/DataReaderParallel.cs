@@ -85,6 +85,8 @@ namespace DataReader.Core
 
                         };
 
+
+
                         _dataProcessor.DataQueue.Add(data, cancelToken);
 
 

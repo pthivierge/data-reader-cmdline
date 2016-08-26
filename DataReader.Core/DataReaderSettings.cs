@@ -37,7 +37,7 @@ namespace DataReader.Core
 
         /// <summary>
         /// Defines the number of tags that will be put in groups that will be formed after the tag search.
-        /// These groups will be passed to the DataReader for the read to be performed. Default: 10 000.
+        /// These groups will be passed to the DataReader for the read to be performed. Default: 50 000.
         /// </summary>
         public int TagGroupSize { get; set; } = 50000;
 
@@ -69,7 +69,7 @@ namespace DataReader.Core
         /// </summary>
         /// <param name="estimatedEventsPerDay">Estimation of the average number of events per day, per tag</param>
         /// <param name="estimatedTagsCount"> Estimation of the total amount of tags that needs to be processed.</param>
-        /// <param name="eventsPerRead">Defines the number of events that should be read per data call. Default 1000. somewhere between 10000 and 50000 is a good start.</param>
+        /// <param name="eventsPerRead">Defines the number of events that should be read per data call.  somewhere between 10000 and 50000 is a good start.</param>
         /// <param name="readType">Type of read that you want to perform.  Bulk performs better if network has latency.  Paralell can outperform bulk if latency is low.</param>
         public void AutoTune(ReadingType readType, int estimatedEventsPerDay, int estimatedTagsCount, int eventsPerRead)
         {

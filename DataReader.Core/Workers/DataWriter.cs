@@ -24,6 +24,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using DataReader.Core.Helpers;
+using log4net;
 using OSIsoft.AF.Asset;
 
 namespace DataReader.Core
@@ -31,19 +33,27 @@ namespace DataReader.Core
     /// <summary>
     /// This class
     /// </summary>
-    public class DataWriter : TaskBase
+    public class DataWriter : TaskBase, IDisposable
     {
 
-        public readonly BlockingCollection<List<AFValues>> DataQueue = new BlockingCollection<List<AFValues>>();
+        public readonly BlockingCollection<IEnumerable<AFValues>> DataQueue = new BlockingCollection<IEnumerable<AFValues>>();
         private readonly CancellationTokenSource _cancellationToken = new CancellationTokenSource();
         private string _outputFileName;
         private int _eventsPerFile;
+
+
+        private List<FileWriter> writers = new List<FileWriter>();
 
 
         public DataWriter(string outputFileName, int eventsPerFile)
         {
             _outputFileName = outputFileName;
             _eventsPerFile = eventsPerFile;
+
+            writers.Add(new FileWriter(eventsPerFile, outputFileName ,"1"));
+            writers.Add(new FileWriter(eventsPerFile, outputFileName , "2"));
+            writers.Add(new FileWriter(eventsPerFile, outputFileName , "3"));
+            writers.Add(new FileWriter(eventsPerFile, outputFileName , "4"));
         }
 
         public override void Stop()
@@ -54,94 +64,61 @@ namespace DataReader.Core
 
         protected override void DoTask(CancellationToken cancelToken)
         {
-            WriteData(_cancellationToken.Token, _outputFileName, _eventsPerFile);
+            WriteData(_cancellationToken.Token, _outputFileName);
         }
 
-        private void WriteData(CancellationToken cancelToken, string fileName, int eventsPerFile)
+        private void WriteData(CancellationToken cancelToken, string fileName)
         {
 
-            List<AFValue> remainingValues = new List<AFValue>();
-
-            List<Task> writeTask = new List<Task>();
 
             _logger.InfoFormat("Writing data task started...");
 
 
-
             // gets currently available values from the queue
-            foreach (var afValues in DataQueue.GetConsumingEnumerable(cancelToken))
+            foreach (IEnumerable<AFValues> valuesList in DataQueue.GetConsumingEnumerable(cancelToken))
             {
 
-                var values = new List<AFValue>();
-                values.AddRange(remainingValues);
-                remainingValues.Clear();
 
-                values.AddRange(afValues.SelectMany(v => v));
+                
+                var writer = writers.FirstOrDefault(w => w.ActiveTask == null || (w.ActiveTask.IsCompleted && w.ActiveTask.Status != TaskStatus.WaitingForActivation));
 
-                if (values.Count > 0)
+                if (writer == null)
                 {
-                    var subsets = values.ChunkBy(_eventsPerFile);
-                    for (int index = 0; index < subsets.Count - 1; index++)
+                    Task.WaitAny(writers.Select(w => w.ActiveTask).ToArray());
+                    writer = writers.FirstOrDefault(w => w.ActiveTask == null || (w.ActiveTask.IsCompleted && w.ActiveTask.Status != TaskStatus.WaitingForActivation));
+                }
+
+
+                writer.ActiveTask = Task.Run(() =>
+                {
+                    foreach (AFValues afValues in valuesList)
                     {
-                        var subset = subsets[index];
-                        if (subset.Count == eventsPerFile)
-                            writeTask.Add(WriteValues(subset, fileName));
-                        else
+
+                        foreach (AFValue afValue in afValues)
                         {
-                            // it could be that the last element does not contain the required nuber of events
-                            remainingValues.AddRange(subset);
+                            var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
+                            writer.WriteLine(line);
                         }
                     }
-                }
+                });
 
 
 
-                if (DataQueue.IsAddingCompleted && remainingValues.Count > 0)
-                {
-                    writeTask.Add(WriteValues(remainingValues, fileName));
-                    remainingValues.Clear();
-                }
 
-                if (DataQueue.IsAddingCompleted || cancelToken.IsCancellationRequested)
-                {
-                    _logger.InfoFormat("Datawriter completing, waiting for remaining files to be written to complete.");
-                    Task.WaitAll(writeTask.ToArray());
-
-                }
-
-                writeTask.RemoveAll(t => t.IsCompleted);
 
             }
 
             _logger.InfoFormat("Datawriter completed.");
         }
 
-        private Task WriteValues(List<AFValue> allValues, string fileName)
+
+
+
+
+
+        public void Dispose()
         {
 
-            var fullFileNAme = fileName + "_" + DateTime.Now.ToIsoReadable() + ".csv";
-
-            _logger.InfoFormat("Writing {0} values into text file {1}", allValues.Count, fullFileNAme);
-
-            var text = new StringBuilder();
-
-            allValues.ForEach(v => text.AppendLine(v.Timestamp.LocalTime + "," + v.Value + "," + v.PIPoint.Name));
-            
-            allValues.Clear();
-
-            return WriteTextAsync(fullFileNAme, text.ToString());
-        }
-
-        static async Task WriteTextAsync(string filePath, string text)
-        {
-            byte[] encodedText = Encoding.Unicode.GetBytes(text);
-
-            using (FileStream sourceStream = new FileStream(filePath,
-                FileMode.Create, FileAccess.Write, FileShare.None,
-                bufferSize: 4096, useAsync: true))
-            {
-                await sourceStream.WriteAsync(encodedText, 0, encodedText.Length);
-            };
         }
     }
 }

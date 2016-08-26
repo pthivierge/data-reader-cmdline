@@ -27,7 +27,7 @@ namespace DataReader.Core
         public int TotalEventProcessed { get; private set; }
 
 
-        public  DataProcessor(bool enableWrite,DataWriter dataWriter)
+        public DataProcessor(bool enableWrite, DataWriter dataWriter)
         {
             _enableWrite = enableWrite;
             _dataWriter = dataWriter;
@@ -39,25 +39,53 @@ namespace DataReader.Core
             {
                 _logger.Info("Starting the process data task");
 
+                var tasks = new List<Task>();
+
                 foreach (var dataInfo in DataQueue.GetConsumingEnumerable(cancelToken))
                 {
-                    
-                    var listData = dataInfo.Data.ToList();
 
-                    var count = listData.Sum(v => v.Count);
-
-                    TotalEventProcessed += count;
-
-                    // working out some stats
-                    dataInfo.StatsInfo.EventsCount = count;
-                    dataInfo.StatsInfo.Stopwatch.Stop();
-                    Statistics.StatisticsQueue.Add(dataInfo.StatsInfo,cancelToken);
+                    //while (tasks.Count >= 2)
+                    //{
+                    //    tasks.RemoveAll(t => t.IsCompleted || t.IsFaulted || t.IsCanceled);
+                    //    Thread.Sleep(500);
+                    //}
 
 
-                    if (_enableWrite)
-                    {
-                        _dataWriter.DataQueue.Add(listData,cancelToken);
-                    }
+                    //var newTask = Task.Run(() =>
+                    //{
+                        //    // process the results
+                        //    var eventsProcessedInChunk = 0;
+                        //foreach (AFValues values in dataInfo.Data)
+                        //{
+                        //    foreach (AFValue value in values)
+                        //    {
+                        //        if (_enableWrite)
+                        //        {
+                        //            _dataWriter.DataQueue.Add(value, cancelToken);
+                                    
+                        //        }
+                        //    eventsProcessedInChunk++;
+                        //}
+                        //}
+
+                        //TotalEventProcessed += eventsProcessedInChunk;
+
+
+                        //    // working out some stats
+                        //    dataInfo.StatsInfo.EventsCount = eventsProcessedInChunk;
+                        //dataInfo.StatsInfo.Stopwatch.Stop();
+                        //dataInfo.StatsInfo.EventsInWritingQueue = _dataWriter.DataQueue.Count;
+                        //Statistics.StatisticsQueue.Add(dataInfo.StatsInfo, cancelToken);
+                    //}, cancelToken);
+
+                    //tasks.Add(newTask);
+
+
+
+
+
+
+
                 }
             }
 

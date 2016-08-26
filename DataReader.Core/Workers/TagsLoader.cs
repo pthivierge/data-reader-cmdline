@@ -13,6 +13,7 @@ namespace DataReader.Core
         PIServer _server;
         string[] _queries;
         int _tagChunkSize;
+        int _tagCount = 0;
         Orchestrator _orchestrator;
 
 
@@ -34,35 +35,44 @@ namespace DataReader.Core
         {
             _logger.InfoFormat("TagsLoader started - iterating over {0} query(ies)", _queries.Length);
             
+
             // execute each query, one after the other to find the tags on the server
             foreach (var s in _queries)
             {
-                var tags = Search(s).ToList();
-                _logger.WarnFormat("Found {0} tags with query {1}", tags.Count, s);
+                var piPoints = Search(s);
+                
 
-                var tagLists = tags.ChunkBy(_tagChunkSize);
+                // var tagLists = tags.ChunkBy(_tagChunkSize);
 
                 // once tags are found we split them into smaller chunk for a better re-use later on.
                 
-                foreach (var tagList in tagLists)
+                var  pipoints=new List<PIPoint>();
+                foreach (var point in piPoints)
                 {
-                    // creates the query object
-                    var dataQuery=new DataQuery()
+                    _tagCount++;
+                    pipoints.Add(point);
+
+                    if (pipoints.Count >= _tagChunkSize)
                     {
-                        PiPoints = tagList
-                    };
 
-                    // enqueue the query to be processed
-                    _orchestrator.IncomingPiPoints.Add(dataQuery,cancelToken);
+                        SendPointsForProcessing(cancelToken, pipoints);
+                    }
 
+
+                  //  _logger.DebugFormat("Processing tag {0}",tagCount);
+                    
                     // wait a littke if there are too much queued queries
-                    while (_orchestrator.IncomingPiPoints.Count>100 && !cancelToken.IsCancellationRequested)
+                    while (_orchestrator.IncomingPiPoints.Count>10 && !cancelToken.IsCancellationRequested)
                     {
                         Thread.Sleep(1000);
                     }
 
 
                 }
+
+                if(pipoints.Count>0)
+                    SendPointsForProcessing(cancelToken, pipoints);
+
 
 
             }
@@ -72,6 +82,19 @@ namespace DataReader.Core
             _logger.Info("TagsLoader has completed to load all the PIPoints");
 
 
+        }
+
+        private void SendPointsForProcessing(CancellationToken cancelToken, List<PIPoint> pipoints)
+        {
+// creates the query object witht the tag chunk to start processing the data
+            var dataQuery = new DataQuery();
+            dataQuery.PiPoints.AddRange(pipoints);
+            pipoints.Clear();
+
+            // enqueue the query to be processed
+            _orchestrator.IncomingPiPoints.Add(dataQuery, cancelToken);
+
+            _logger.InfoFormat("TagsLoader loaded {0} for data collection. Total {1} tags loaded.", _tagChunkSize, _tagCount);
         }
 
         public IEnumerable<PIPoint> Search(string query)

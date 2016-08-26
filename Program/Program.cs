@@ -93,11 +93,13 @@ namespace DataReader.CommandLine
 
                         _logger.Info("Creating worker objects...");
                         var dataWriter = new DataWriter(options.OutfileName,options.EventsPerFile);
-                        var dataProcessor = new DataProcessor(options.EnableWrite, dataWriter);
+                        //  var dataProcessor = new DataProcessor(options.EnableWrite, dataWriter);
 
-                        dataReader = options.UseParallel
-                            ? (IDataReader) new DataReaderParallel(readerSettings, dataProcessor)
-                            : new DataReaderBulk(readerSettings, dataProcessor);
+                        dataReader =  new DataReaderBulk(readerSettings, dataWriter,options.EnableWrite);
+
+                        //dataReader = options.UseParallel
+                        //    ? (IDataReader) new DataReaderParallel(readerSettings, dataWriter)
+                        //    : new DataReaderBulk(readerSettings, dataWriter);
 
                         var orchestrator = new Orchestrator(options.StartTime, options.EndTime, readerSettings.TimeIntervalPerDataRequest, dataReader);
                         var tagsLoader = new TagsLoader(piConnection.GetPiServer(), options.TagQueries, readerSettings.TagGroupSize, orchestrator);
@@ -107,7 +109,7 @@ namespace DataReader.CommandLine
                         _logger.Info("Starting workers...");
                         var tagsLoaderTask = tagsLoader.Run();
                         var writerTask = dataWriter.Run();
-                        var processorTask = dataProcessor.Run();
+                       // var processorTask = dataProcessor.Run();
                         var orchestratorTask = orchestrator.Run();
                         var dataReaderTask = dataReader.Run();
                         var statsTask = statistics.Run();
@@ -116,7 +118,7 @@ namespace DataReader.CommandLine
 
 
                         // starts the data reader
-                        Task.WaitAll(orchestratorTask, writerTask, dataReaderTask, tagsLoaderTask, processorTask);
+                        Task.WaitAll(orchestratorTask, writerTask, dataReaderTask, tagsLoaderTask);
 
                         statistics.Stop();
 

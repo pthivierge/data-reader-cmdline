@@ -37,6 +37,8 @@ namespace DataReader.Core
 
         public int EventsCount { get; set; } = 0;
 
+        public int EventsInWritingQueue { get; set; } = 0;
+
         public DateTime PeriodStartTime { get; set; }
 
         public DateTime PeriodEndTime { get; set; }
