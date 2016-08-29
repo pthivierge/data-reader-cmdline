@@ -63,25 +63,11 @@ Read values for the last 30 days and output the result into a file:
 	                         tags that will be read, this will also help
 	                         optimizing the application
 	
-	-p, --parallel             Gather data using parallel calls instead of
-	                         bulk-Parrallel.  This is another good performing
-	                         technique, it uses more network calls though.
-	                         depending on your network this may or may not give
-	                         good performances.
 	
 	--st                       (Default: *-1d) Start Time to query data
 	
 	--et                       (Default: *) End Time to query data
 	
-	--enableWrite              (Default: False) Outputs the data into text files
-	
-	--outFileName              file name to output data.  Works with the
-	                         EnableWrite option. A datetime and a .csv
-	                         extension wil appended the the name.  ex:
-	                         c:\temp\data would suffice
-	
-	--eventsPerFile            (Default: 50000) Number of events to write per
-	                         file
 	
 	--eventsPerRead            (Default: 10000) Defines how many events should be
 	                         read per data call.

@@ -17,6 +17,7 @@
 #endregion
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CommandLine;
@@ -33,11 +34,28 @@ namespace DataReader.CommandLine
     /// </summary>
     internal class Program
     {
+
+        private static void ValidateSettings(CommandLineOptions options)
+        {
+            // if write is enabled, file name is required
+            if (options.EnableWrite)
+            {
+                if(string.IsNullOrEmpty(options.OutfileName))
+                    throw new Exception("--outFileName parameter must be provided when --enableWrite is provided");
+
+                
+                if (!Directory.Exists(Path.GetDirectoryName(options.OutfileName) ?? ""))
+                    throw new DirectoryNotFoundException("The directory does not exist for the file that is provided as --outFileName parameter");
+
+
+            }
+        }
+
         private static void Main(string[] args)
         {
             PIConnection piConnection;
             var _logger = LogManager.GetLogger(typeof (Program));
-            var writer = Console.Out;
+            
 
             try
             {
@@ -46,6 +64,9 @@ namespace DataReader.CommandLine
 
                 if (Parser.Default.ParseArguments(args, options))
                 {
+
+                    ValidateSettings(options);
+
                     var readerSettings = new DataReaderSettings();
                     piConnection = new PIConnection(options.Server);
 
@@ -72,7 +93,7 @@ namespace DataReader.CommandLine
                     {
                         _logger.Info("Data reader starting...");
 
-                        IDataReader dataReader;
+                        
                         piConnection.Connect();
 
                         if (options.EventsPerDay > 0 && options.TagsCount > 0)
@@ -88,7 +109,7 @@ namespace DataReader.CommandLine
                         _logger.Info("Creating worker objects...");
                         var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount);
 
-                        dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
+                       var dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
 
                         //dataReader = options.UseParallel
                         //    ? (IDataReader) new DataReaderParallel(readerSettings, dataWriter)
@@ -137,8 +158,8 @@ namespace DataReader.CommandLine
 
             catch (Exception ex)
             {
-                Console.SetOut(writer);
-                Console.WriteLine("Error: " + ex);
+                
+                _logger.Error(ex);
             }
         }
     }

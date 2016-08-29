@@ -50,6 +50,9 @@ namespace DataReader.CommandLine
         //[Option('p',"parallel", HelpText = "Gather data using parallel calls instead of bulk-Parrallel.  This is another good performing technique, it uses more network calls though.  depending on your network this may or may not give good performances.")]
         //public bool UseParallel { get; set; }
 
+        [Option("eventsPerRead", HelpText = "Defines how many events should be read per data call.", DefaultValue = 10000)]
+        public int EventsPerRead { get; set; }
+
 
         [Option("st", HelpText = "Start Time to query data", DefaultValue = "*-1d")]
         public string StartTime { get; set; }
@@ -57,6 +60,8 @@ namespace DataReader.CommandLine
         [Option("et", HelpText = "End Time to query data", DefaultValue = "*")]
         public string EndTime { get; set; }
         
+        // options related to write
+
         [Option("enableWrite", HelpText = "Outputs the data into text files", DefaultValue = false, MutuallyExclusiveSet = "WriteData")]
         public bool EnableWrite { get; set; }
 
@@ -69,8 +74,7 @@ namespace DataReader.CommandLine
         [Option("eventsPerFile", HelpText = "Number of events to write per file", DefaultValue = 50000, MutuallyExclusiveSet = "WriteData")]
         public int EventsPerFile { get; set; }
 
-        [Option("eventsPerRead", HelpText ="Defines how many events should be read per data call.", DefaultValue = 10000)]
-        public int EventsPerRead { get; set; }
+
 
 
         [HelpOption]
