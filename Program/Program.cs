@@ -26,29 +26,24 @@ using log4net;
 namespace DataReader.CommandLine
 {
     /// <summary>
-    /// This program was built to make data read comparisons between different PI Data Archives
-    /// ex: 
+    ///     This program was built to make data read comparisons between different PI Data Archives
+    ///     ex:
     /// </summary>
     internal class Program
     {
         private static void Main(string[] args)
         {
-
             PIConnection piConnection;
-            var _logger = LogManager.GetLogger(typeof(Program));
+            var _logger = LogManager.GetLogger(typeof (Program));
             var writer = Console.Out;
 
             try
             {
-
-              
-
                 var options = new CommandLineOptions();
 
 
                 if (Parser.Default.ParseArguments(args, options))
                 {
-
                     var readerSettings = new DataReaderSettings();
                     piConnection = new PIConnection(options.Server);
 
@@ -68,14 +63,11 @@ namespace DataReader.CommandLine
                             {
                                 tags.ForEach(t => _logger.InfoFormat("Tag: {0}, PointClass: {1}", t.Name, t.PointClass));
                             }
-
                         }
-
                     }
 
                     if (options.TagQueries != null && options.TagQueries.Length > 0)
                     {
-
                         _logger.Info("Data reader starting...");
 
                         IDataReader dataReader;
@@ -83,37 +75,37 @@ namespace DataReader.CommandLine
 
                         if (options.EventsPerDay > 0 && options.TagsCount > 0)
                         {
-                            var type = options.UseParallel? DataReaderSettings.ReadingType.Parallel: DataReaderSettings.ReadingType.Bulk;
-
-                            readerSettings.AutoTune(type, options.EventsPerDay,options.TagsCount,options.EventsPerRead);
+                            // var type = options.UseParallel? DataReaderSettings.ReadingType.Parallel: DataReaderSettings.ReadingType.Bulk;
+                            var type = DataReaderSettings.ReadingType.Bulk;
+                            readerSettings.AutoTune(type, options.EventsPerDay, options.TagsCount, options.EventsPerRead);
                         }
-                        
+
 
                         // starts the data writer
 
                         _logger.Info("Creating worker objects...");
-                        var dataWriter = new DataWriter(options.OutfileName,options.EventsPerFile, options.WritersCount);
-                        
-                        dataReader =  new DataReaderBulk(readerSettings, dataWriter,options.EnableWrite);
+                        var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount);
+
+                        dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
 
                         //dataReader = options.UseParallel
                         //    ? (IDataReader) new DataReaderParallel(readerSettings, dataWriter)
                         //    : new DataReaderBulk(readerSettings, dataWriter);
 
-                        var orchestrator = new Orchestrator(options.StartTime, options.EndTime, readerSettings.TimeIntervalPerDataRequest, dataReader);
-                        var tagsLoader = new TagsLoader(piConnection.GetPiServer(), options.TagQueries, readerSettings.TagGroupSize, orchestrator);
-                        var statistics=new Statistics();
+                        var orchestrator = new Orchestrator(options.StartTime, options.EndTime,
+                            readerSettings.TimeIntervalPerDataRequest, dataReader);
+                        var tagsLoader = new TagsLoader(piConnection.GetPiServer(), options.TagQueries,
+                            readerSettings.TagGroupSize, orchestrator);
+                        var statistics = new Statistics();
 
                         // starts the orchestrator
                         _logger.Info("Starting workers...");
                         var tagsLoaderTask = tagsLoader.Run();
                         var writerTask = dataWriter.Run();
-                       // var processorTask = dataProcessor.Run();
+                        // var processorTask = dataProcessor.Run();
                         var orchestratorTask = orchestrator.Run();
                         var dataReaderTask = dataReader.Run();
                         var statsTask = statistics.Run();
-
-
 
 
                         // starts the data reader
@@ -124,12 +116,7 @@ namespace DataReader.CommandLine
                         Task.WaitAll(statsTask);
 
                         _logger.Info("All tasks completed successfully");
-
                     }
-
-
-
-
 
 
                     // DEBUG

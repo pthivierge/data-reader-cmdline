@@ -47,8 +47,8 @@ namespace DataReader.CommandLine
         public int TagsCount { get; set; }
 
 
-        [Option('p',"parallel", HelpText = "Gather data using parallel calls instead of bulk-Parrallel.  This is another good performing technique, it uses more network calls though.  depending on your network this may or may not give good performances.")]
-        public bool UseParallel { get; set; }
+        //[Option('p',"parallel", HelpText = "Gather data using parallel calls instead of bulk-Parrallel.  This is another good performing technique, it uses more network calls though.  depending on your network this may or may not give good performances.")]
+        //public bool UseParallel { get; set; }
 
 
         [Option("st", HelpText = "Start Time to query data", DefaultValue = "*-1d")]
