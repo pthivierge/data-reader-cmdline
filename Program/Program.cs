@@ -26,8 +26,10 @@ using log4net;
 namespace DataReader.CommandLine
 {
     /// <summary>
-    ///     This program was built to make data read comparisons between different PI Data Archives
-    ///     ex:
+    ///     Command line application to make the data extraction
+    /// <example>
+    /// datareader.exe --server PIServer01 --testTagSearch "tag:=Unit1* AND Location1:=1 AND PointSource:=OPC" --printTags
+    /// </example>
     /// </summary>
     internal class Program
     {
