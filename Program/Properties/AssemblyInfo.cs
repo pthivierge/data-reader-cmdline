@@ -37,7 +37,7 @@ using log4net.Config;
 
 //Copyright information
 
-[assembly: AssemblyCopyright("OSIsoft Development Support - pthivierge")]
+[assembly: AssemblyCopyright("Patrice Thivierge Fortin, Apache License 2.0")]
 
 //Enumeration indicating the target culture for the assembly
 

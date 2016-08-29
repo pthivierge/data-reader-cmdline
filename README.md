@@ -41,57 +41,58 @@ Read values for the last 30 days and output the result into a file:
 
 
 
-	-s, --server               Required. PI Data Archive Server name to connect
-	
-	-t, --tagQueries           Queries to load the tags, the more you add the
-	                         best and the sooner that app will start reading
-	                         data. This option accepts many queries separeted
-	                         by a space. e.g. sinus* SSN_NP60* "tag:<>sin*
-	                         DataType:Float"
-	
-	--testTagSearch            Makes a serch will all passed filters and prints
-	                         the results to the screen. e.g. sinus* SSN_NP60*
-	                         "tag:<>sin* DataType:Float"
-	
-	--PrintTags                Print all tag names when doing the testTagSearch
-	
-	--estimatedEventsPerDay    (Default: 4) provides an estimate of the number of
-	                         events per tag per day, to help optimising the
-	                         speed of reading
-	
-	--estimatedTagsCount       (Default: 10000) estimate of the total number of
-	                         tags that will be read, this will also help
-	                         optimizing the application
-	
-	
-	--st                       (Default: *-1d) Start Time to query data
-	
-	--et                       (Default: *) End Time to query data
-	
-	
-	--eventsPerRead            (Default: 10000) Defines how many events should be
-	                         read per data call.
-	
-	--help                     Display this help screen.
+  -s, --server               Required. PI Data Archive Server name to connect
 
-## Parameters to write to a file  
-     --enableWrite                (Default: False) Outputs the data into text
-                                  files
+  -t, --tagQueries           Queries to load the tags, the more you add the
+                             best and the sooner that app will start reading
+                             data. This option accepts many queries separeted
+                             by a space. e.g. sinus* SSN_NP60* "tag:<>sin*
+                             DataType:Float"
 
-     --outFileName                file name to output data into.  Works with the
-                                  EnableWrite option. A datetime and a .csv
-                                  extension wil appended the the name.  ex:
-                                  c:\temp\data would suffice
+  --testTagSearch            Makes a serch will all passed filters and prints
+                             the results to the screen. e.g. sinus* SSN_NP60*
+                             "tag:<>sin* DataType:Float"
 
-     --eventsPerFile              (Default: 50000) Number of events to write per
-                                  file
+  --printTags                Print all tag names when doing the testTagSearch
+
+  --estimatedEventsPerDay    (Default: 4) provides an estimate of the number of
+                             events per tag per day, to help optimising the
+                             speed of reading
+
+  --estimatedTagsCount       (Default: 10000) estimate of the total number of
+                             tags that will be read, this will also help
+                             optimizing the application
+
+  --eventsPerRead            (Default: 10000) Defines how many events should be
+                             read per data call.
+
+  --st                       (Default: *-1d) Start Time to query data
+
+  --et                       (Default: *) End Time to query data
+
+  --enableWrite              (Default: False) Outputs the data into text files.  I not specified data is read but is not output.
+
+  --writersCount             (Default: 4) Defines the numbers of files writers
+                             that will runs simultaneously.
+
+  --outFileName              file name to output data.  Works with the
+                             EnableWrite option. A datetime and a .csv
+                             extension wil appended the the name.  ex:
+                             c:\temp\data would suffice
+
+  --eventsPerFile            (Default: 50000) Number of events to write per
+                             file
+
+  --help                     Display this help screen.
+
+
 
 #Notes
 
 On a server with about 6000 tags, the following command gave very good read results.
 It has yet to be tested on a server with a lot more tags.
 
-`DataReader.exe -s PIServer01 -t * --st *-30d --et * --estimatedEventsPerDay 4 --estimatedTagscount 6207 --eventsPerRead 150000`
+`DataReader.exe -s PIServer01 -t * --st T-30d --et T --estimatedEventsPerDay 4 --estimatedTagscount 6207 --eventsPerRead 150000`
 
 
 [1]:https://techsupport.osisoft.com/Documentation/PI-AF-SDK/html/b8fbb6da-7a4b-4570-a09d-7f2b85ed204d.htm
