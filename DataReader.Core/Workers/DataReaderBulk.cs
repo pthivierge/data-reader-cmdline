@@ -81,7 +81,7 @@ namespace DataReader.Core
             // PARALLEL bulk 
             var pointListList = query.PiPoints.ToList().ChunkBy(bulkParallelChunkSize);
             Parallel.ForEach(pointListList, new ParallelOptions { MaxDegreeOfParallelism = maxDegOfParallel,CancellationToken = cancelToken },
-                pts =>
+                (pts,state,index) =>
                 {
                    var stats=new StatisticsInfo();
                     stats.Stopwatch.Start();
@@ -98,7 +98,16 @@ namespace DataReader.Core
 
                         if (_enableWrite)
                         {
-                            _dataWriter.DataQueue.Add(bulkData, cancelToken);
+                            var writeInfo=new WriteInfo()
+                            {
+                                Data = bulkData,
+                                StartTime = timeRange.StartTime,
+                                EndTime = timeRange.EndTime,
+                                ChunkId = query.ChunkId,
+                                SubChunkId= index
+                            };
+
+                            _dataWriter.DataQueue.Add(writeInfo, cancelToken);
                         }
                             
 

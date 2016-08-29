@@ -32,7 +32,7 @@ namespace DataReader.Core
         /// </summary>
         public static string ToIsoReadable(this DateTime dateTime)
         {
-            return dateTime.ToString("yyyy-MM-dd_HH'.'mm'.'ss'.'ffff");
+            return dateTime.ToString("yyyy-MM-dd_HH'.'mm'.'ss");
         }
 
         /// <summary>

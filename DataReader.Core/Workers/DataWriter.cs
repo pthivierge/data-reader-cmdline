@@ -23,32 +23,38 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DataReader.Core.Filters;
 using DataReader.Core.Helpers;
 using OSIsoft.AF.Asset;
 
 namespace DataReader.Core
 {
+
+
+
     /// <summary>
     ///     This class
     /// </summary>
     public class DataWriter : TaskBase, IDisposable
     {
-        public readonly BlockingCollection<IEnumerable<AFValues>> DataQueue =
-            new BlockingCollection<IEnumerable<AFValues>>();
+        private string _baseOutputFileName = null;
+
+        public readonly BlockingCollection<WriteInfo> DataQueue =
+            new BlockingCollection<WriteInfo>();
 
         private readonly List<FileWriter> writers = new List<FileWriter>();
 
-
         public DataWriter(string outputFileName, int eventsPerFile, int writersCount)
         {
+            _baseOutputFileName = outputFileName;
 
             // here we create the instances of the writers we need
-            for (int i = 1; i < writersCount+1; i++)
+            for (int i = 1; i < writersCount + 1; i++)
             {
-                writers.Add(new FileWriter(eventsPerFile, outputFileName, i.ToString()));
+                writers.Add(new FileWriter(eventsPerFile, i.ToString()));
             }
 
-           
+
         }
 
 
@@ -68,7 +74,7 @@ namespace DataReader.Core
 
 
             // gets currently available values from the queue
-            foreach (var valuesList in DataQueue.GetConsumingEnumerable(cancelToken))
+            foreach (var writeInfo in DataQueue.GetConsumingEnumerable(cancelToken))
             {
                 // find an available writer to write the results into a file
                 var writer =
@@ -94,24 +100,67 @@ namespace DataReader.Core
                 if (writer != null)
                 {
 
+                   
+
                     writer.ActiveTask = Task.Run(() =>
                     {
-                        foreach (var afValues in valuesList)
+                        try
+                        {
+
+                       
+
+                        var fileName = _baseOutputFileName + "_" + writeInfo.ChunkId + "_" +
+                                       writeInfo.StartTime.ToLocalTime().ToIsoReadable() + " to " + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
+
+                        writer.SetName(fileName);
+
+                        var filters = new IDataFilter[]
+                        {
+                            new DigitalStatesFilter(),
+                            new DuplicateValuesFilter(),
+                        };
+
+                        foreach (var afValues in writeInfo.Data)
                         {
                             foreach (var afValue in afValues)
                             {
-                            
-                            // if you need to check data - we can do it here
 
-                            var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
-                                writer.WriteLine(line);
+                                // if you need to check data - we can do it here
+                                var isFiltered = false;
+                                foreach (var filter in filters)
+                                {
+                                    isFiltered = filter.IsFiltered(afValue);
+
+                                    if (isFiltered)
+                                    {
+                                        break;
+                                    }
+                                }
+
+
+                                if (!isFiltered)
+                                {
+                                    var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
+
+                                    writer.WriteLine(line);
+                                }
+
+
                             }
                         }
+
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(ex);
+                        }
+
                     }, cancelToken);
                 }
                 else
                 {
-                    _logger.Error("DataWriter encounterd a null, FileWriter.  This situation should never occur, please report the issue.");
+                    _logger.Error(
+                        "DataWriter encounterd a null, FileWriter.  This situation should never occur, please report the issue.");
                 }
             }
 

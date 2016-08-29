@@ -49,8 +49,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataInfo.cs" />
+    <Compile Include="WriteInfo.cs" />
     <Compile Include="DataQuery.cs" />
+    <Compile Include="Filters\DigitalStatesFilter.cs" />
+    <Compile Include="Filters\DuplicateValuesFilter.cs" />
+    <Compile Include="Filters\IDataFilter.cs" />
     <Compile Include="Helpers\ExtensionMethods.cs" />
     <Compile Include="Helpers\FileWriter.cs" />
     <Compile Include="Helpers\PIConnection.cs" />

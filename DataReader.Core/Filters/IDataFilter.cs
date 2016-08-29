@@ -5,12 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using OSIsoft.AF.Asset;
 
-namespace DataReader.Core
+namespace DataReader.Core.Filters
 {
-    public class DataInfo
+    interface IDataFilter
     {
-        public IEnumerable<AFValues> Data { get; set; }
-        public StatisticsInfo StatsInfo { get; set; }
+        bool IsFiltered(AFValue value);
+
     }
 }
-

@@ -47,7 +47,7 @@ namespace DataReader.Core
                 dataQuery.StartTime = _datesIntervals[0];
                 dataQuery.EndTime = _datesIntervals[1];
                 dataQuery.QueryId = _queryId++;
-
+                dataQuery.ChunkId = 1;
                 // keep the taglist for the next time period query
                 PointsToRead.Enqueue(dataQuery);
 
@@ -74,7 +74,8 @@ namespace DataReader.Core
                         StartTime = _datesIntervals[i],
                         EndTime = _datesIntervals[i + 1],
                         QueryId = _queryId++,
-                        PiPoints = dataQuery.PiPoints
+                        PiPoints = dataQuery.PiPoints,
+                        ChunkId = i
                     };
 
 
