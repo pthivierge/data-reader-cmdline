@@ -35,18 +35,20 @@ namespace DataReader.Core
     /// <summary>
     ///     This class
     /// </summary>
-    public class DataWriter : TaskBase, IDisposable
+    public class DataWriter : TaskBase
     {
         private string _baseOutputFileName = null;
+        FiltersFactory _filtersFactory;
 
         public readonly BlockingCollection<WriteInfo> DataQueue =
             new BlockingCollection<WriteInfo>();
 
         private readonly List<FileWriter> writers = new List<FileWriter>();
 
-        public DataWriter(string outputFileName, int eventsPerFile, int writersCount)
+        public DataWriter(string outputFileName, int eventsPerFile, int writersCount, FiltersFactory filtersFactory)
         {
             _baseOutputFileName = outputFileName;
+            _filtersFactory = filtersFactory;
 
             // here we create the instances of the writers we need
             for (int i = 1; i < writersCount + 1; i++)
@@ -55,11 +57,6 @@ namespace DataReader.Core
             }
 
 
-        }
-
-
-        public void Dispose()
-        {
         }
 
         public override void Stop()
@@ -100,54 +97,38 @@ namespace DataReader.Core
                 if (writer != null)
                 {
 
-                   
+
 
                     writer.ActiveTask = Task.Run(() =>
                     {
                         try
                         {
 
-                       
+                            IDataFilter[] dataFilters=null;
 
-                        var fileName = _baseOutputFileName + "_" + writeInfo.ChunkId + "_" +
-                                       writeInfo.StartTime.ToLocalTime().ToIsoReadable() + " to " + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
+                            var fileName = _baseOutputFileName + "_" + writeInfo.ChunkId + "_" +
+                                           writeInfo.StartTime.ToLocalTime().ToIsoReadable() + " to " + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
 
-                        writer.SetName(fileName);
+                            writer.SetName(fileName);
 
-                        var filters = new IDataFilter[]
-                        {
-                            new DigitalStatesFilter(),
-                            new DuplicateValuesFilter(),
-                        };
 
-                        foreach (var afValues in writeInfo.Data)
-                        {
-                            foreach (var afValue in afValues)
+                            if (_filtersFactory != null)
+                                dataFilters = _filtersFactory.GetFilters();
+
+
+                            foreach (var afValues in writeInfo.Data)
                             {
-
-                                // if you need to check data - we can do it here
-                                var isFiltered = false;
-                                foreach (var filter in filters)
+                                foreach (var afValue in afValues)
                                 {
-                                    isFiltered = filter.IsFiltered(afValue);
-
-                                    if (isFiltered)
+                                    var isFiltered = CheckFilters(afValue, dataFilters);
+                                    
+                                    if (!isFiltered)
                                     {
-                                        break;
+                                        var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
+                                        writer.WriteLine(line);
                                     }
                                 }
-
-
-                                if (!isFiltered)
-                                {
-                                    var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
-
-                                    writer.WriteLine(line);
-                                }
-
-
                             }
-                        }
 
                         }
                         catch (Exception ex)
@@ -165,6 +146,24 @@ namespace DataReader.Core
             }
 
             _logger.InfoFormat("Datawriter completed.");
+        }
+
+        private static bool CheckFilters(AFValue afValue, IDataFilter[] dataFilters)
+        {
+            if (dataFilters == null)
+                return false;
+
+            var isFiltered = false;
+            foreach (var filter in dataFilters)
+            {
+                isFiltered = filter.IsFiltered(afValue);
+
+                if (isFiltered)
+                {
+                    break;
+                }
+            }
+            return isFiltered;
         }
     }
 }

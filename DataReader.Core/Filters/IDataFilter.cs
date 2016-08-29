@@ -7,7 +7,7 @@ using OSIsoft.AF.Asset;
 
 namespace DataReader.Core.Filters
 {
-    interface IDataFilter
+    public interface IDataFilter
     {
         bool IsFiltered(AFValue value);
 

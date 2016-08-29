@@ -22,6 +22,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommandLine;
 using DataReader.Core;
+using DataReader.Core.Filters;
 using log4net;
 
 namespace DataReader.CommandLine
@@ -105,9 +106,22 @@ namespace DataReader.CommandLine
 
 
                         // starts the data writer
+                        
+                        // defines rejected states to filter out
+                        var rejectedStates = new[]
+                        {
+                            "ptcreated",
+                            "snapfix",
+                            "shutdown",
+                            "no data"
+                        };
 
+                        var filtersFactory=new FiltersFactory();
+                        filtersFactory.SetDigitalStatesFilters(rejectedStates);
+                        filtersFactory.SetFilters(FiltersFactory.FiltersTypesEnum.DigitalStatesFilter,FiltersFactory.FiltersTypesEnum.DuplicateValuesFilter);
+                        
                         _logger.Info("Creating worker objects...");
-                        var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount);
+                        var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount, filtersFactory);
 
                        var dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
 

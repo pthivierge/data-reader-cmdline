@@ -12,24 +12,28 @@ namespace DataReader.Core.Filters
     {
         private readonly ILog _logger = LogManager.GetLogger(typeof(DigitalStatesFilter));
 
+        readonly string[] _rejectedStates=null;
+
+        public DigitalStatesFilter(string[] statesToIgnore)
+        {
+            if (statesToIgnore != null && statesToIgnore.Length > 0)
+            {
+                _rejectedStates = statesToIgnore;
+            }
+        }
+
+
         public bool IsFiltered(AFValue value)
         {
             bool isFiltered = false;
             if (value.Value is AFEnumerationValue)
             {
                 var digValue = (AFEnumerationValue)value.Value;
-
-                var rejectedStates = new[]
-                {
-                    "ptcreated",
-                    "snapfix",
-                    "shutdown",
-                };
-
-                isFiltered = rejectedStates.Contains(digValue.Name.ToLower());
+                
+                isFiltered = _rejectedStates.Contains(digValue.Name.ToLower());
 
                 if(isFiltered)
-                    _logger.DebugFormat("Fitlered digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, value.Value);
+                    _logger.DebugFormat("Filtered digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, value.Value);
 
             }
 

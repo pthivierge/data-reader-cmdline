@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Filters\FiltersFactory.cs" />
     <Compile Include="WriteInfo.cs" />
     <Compile Include="DataQuery.cs" />
     <Compile Include="Filters\DigitalStatesFilter.cs" />
