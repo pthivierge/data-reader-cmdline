@@ -60,6 +60,9 @@ namespace DataReader.CommandLine
         [Option("enableWrite", HelpText = "Outputs the data into text files", DefaultValue = false, MutuallyExclusiveSet = "WriteData")]
         public bool EnableWrite { get; set; }
 
+        [Option("writersCount", HelpText = "Defines the numbers of files writers that will runs simultaneously.", DefaultValue = 4, MutuallyExclusiveSet = "WriteData")]
+        public int WritersCount { get; set; }
+
         [Option("outFileName",HelpText ="file name to output data.  Works with the EnableWrite option. A datetime and a .csv extension wil appended the the name.  ex: c:\\temp\\data would suffice",MutuallyExclusiveSet = "WriteData")]
         public string OutfileName { get; set; }
 

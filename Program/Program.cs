@@ -92,9 +92,8 @@ namespace DataReader.CommandLine
                         // starts the data writer
 
                         _logger.Info("Creating worker objects...");
-                        var dataWriter = new DataWriter(options.OutfileName,options.EventsPerFile);
-                        //  var dataProcessor = new DataProcessor(options.EnableWrite, dataWriter);
-
+                        var dataWriter = new DataWriter(options.OutfileName,options.EventsPerFile, options.WritersCount);
+                        
                         dataReader =  new DataReaderBulk(readerSettings, dataWriter,options.EnableWrite);
 
                         //dataReader = options.UseParallel

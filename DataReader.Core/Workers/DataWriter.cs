@@ -39,12 +39,16 @@ namespace DataReader.Core
         private readonly List<FileWriter> writers = new List<FileWriter>();
 
 
-        public DataWriter(string outputFileName, int eventsPerFile)
+        public DataWriter(string outputFileName, int eventsPerFile, int writersCount)
         {
-            writers.Add(new FileWriter(eventsPerFile, outputFileName, "1"));
-            writers.Add(new FileWriter(eventsPerFile, outputFileName, "2"));
-            writers.Add(new FileWriter(eventsPerFile, outputFileName, "3"));
-            writers.Add(new FileWriter(eventsPerFile, outputFileName, "4"));
+
+            // here we create the instances of the writers we need
+            for (int i = 1; i < writersCount+1; i++)
+            {
+                writers.Add(new FileWriter(eventsPerFile, outputFileName, i.ToString()));
+            }
+
+           
         }
 
 
