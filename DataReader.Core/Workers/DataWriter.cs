@@ -50,7 +50,7 @@ namespace DataReader.Core
             _outputFileName = outputFileName;
             _eventsPerFile = eventsPerFile;
 
-            writers.Add(new FileWriter(eventsPerFile, outputFileName ,"1"));
+            writers.Add(new FileWriter(eventsPerFile, outputFileName , "1"));
             writers.Add(new FileWriter(eventsPerFile, outputFileName , "2"));
             writers.Add(new FileWriter(eventsPerFile, outputFileName , "3"));
             writers.Add(new FileWriter(eventsPerFile, outputFileName , "4"));
@@ -93,18 +93,16 @@ namespace DataReader.Core
                 {
                     foreach (AFValues afValues in valuesList)
                     {
-
                         foreach (AFValue afValue in afValues)
                         {
+                            // if you need to check data - we can do it here
+                            // 
+
                             var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
                             writer.WriteLine(line);
                         }
                     }
                 });
-
-
-
-
 
             }
 

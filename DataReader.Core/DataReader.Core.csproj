@@ -60,7 +60,6 @@
     <Compile Include="IDataReader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DataReaderSettings.cs" />
-    <Compile Include="Workers\DataProcessor.cs" />
     <Compile Include="Workers\DataReaderBulk.cs" />
     <Compile Include="Workers\DataReaderParallel.cs" />
     <Compile Include="Workers\DataWriter.cs" />

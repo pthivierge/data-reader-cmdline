@@ -36,8 +36,6 @@ namespace DataReader.Core.Helpers
                 CreateNewFile(_fileName);
                 _lineCount = 0;
             }
-
-            //_logger.InfoFormat("Writing {0} values into text file {1}", allValues.Count, fullFileNAme);
             
             _streamWriter.WriteLine(line);
             _lineCount++;
