@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DataReader.Core.Helpers;
 using log4net;
 using OSIsoft.AF.Asset;
 
-namespace DataReader.Core.Filters
+namespace DataReader.Core
 {
     public class DuplicateValuesFilter : IDataFilter
     {

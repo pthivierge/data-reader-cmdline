@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using log4net;
 using log4net.Filter;
 
-namespace DataReader.Core.Filters
+namespace DataReader.Core
 {
     public class FiltersFactory
     {

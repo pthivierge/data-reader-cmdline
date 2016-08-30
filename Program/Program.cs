@@ -22,7 +22,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommandLine;
 using DataReader.Core;
-using DataReader.Core.Filters;
 using log4net;
 
 namespace DataReader.CommandLine

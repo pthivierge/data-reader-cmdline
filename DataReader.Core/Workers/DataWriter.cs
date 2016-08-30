@@ -23,8 +23,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using DataReader.Core.Filters;
-using DataReader.Core.Helpers;
 using OSIsoft.AF.Asset;
 
 namespace DataReader.Core

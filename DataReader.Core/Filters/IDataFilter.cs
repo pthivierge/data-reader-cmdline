@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OSIsoft.AF.Asset;
 
-namespace DataReader.Core.Filters
+namespace DataReader.Core
 {
     public interface IDataFilter
     {

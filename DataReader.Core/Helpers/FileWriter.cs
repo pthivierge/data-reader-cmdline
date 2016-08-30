@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using log4net;
 
-namespace DataReader.Core.Helpers
+namespace DataReader.Core
 {
     public class FileWriter : IDisposable
     {

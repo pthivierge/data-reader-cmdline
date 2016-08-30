@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using log4net;
 using OSIsoft.AF.Asset;
 
-namespace DataReader.Core.Filters
+namespace DataReader.Core
 {
     public class DigitalStatesFilter : IDataFilter
     {
@@ -26,14 +26,15 @@ namespace DataReader.Core.Filters
         public bool IsFiltered(AFValue value)
         {
             bool isFiltered = false;
-            if (value.Value is AFEnumerationValue)
+            var enumerationValue = value.Value as AFEnumerationValue;
+            if (enumerationValue != null)
             {
-                var digValue = (AFEnumerationValue)value.Value;
+                var digValue = enumerationValue;
                 
                 isFiltered = _rejectedStates.Contains(digValue.Name.ToLower());
 
                 if(isFiltered)
-                    _logger.DebugFormat("Filtered digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, value.Value);
+                    _logger.DebugFormat("Filtered digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, enumerationValue);
 
             }
 
