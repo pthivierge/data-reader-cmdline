@@ -61,7 +61,7 @@ namespace DataReader.Core
 
                   //  _logger.DebugFormat("Processing tag {0}",tagCount);
                     
-                    // wait a littke if there are too much queued queries
+                    // wait a little if there are too much queued queries
                     while (_orchestrator.IncomingPiPoints.Count>10 && !cancelToken.IsCancellationRequested)
                     {
                         Thread.Sleep(1000);

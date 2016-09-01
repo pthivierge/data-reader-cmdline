@@ -32,12 +32,27 @@ namespace DataReader.Core
     /// </summary>
     public class StatisticsInfo
     {
-        
-        public Stopwatch Stopwatch { get; }=new Stopwatch();
+        private readonly Stopwatch _stopwatch = new Stopwatch();
+        private int _eventsCount = 0;
+        private int _eventsInWritingQueue = 0;
+        private bool _print = true;
 
-        public int EventsCount { get; set; } = 0;
+        public Stopwatch Stopwatch
+        {
+            get { return _stopwatch; }
+        }
 
-        public int EventsInWritingQueue { get; set; } = 0;
+        public int EventsCount
+        {
+            get { return _eventsCount; }
+            set { _eventsCount = value; }
+        }
+
+        public int EventsInWritingQueue
+        {
+            get { return _eventsInWritingQueue; }
+            set { _eventsInWritingQueue = value; }
+        }
 
         public DateTime PeriodStartTime { get; set; }
 
@@ -59,8 +74,10 @@ namespace DataReader.Core
 
         }
 
-        public bool Print { get; set; } = true;
-
-
+        public bool Print
+        {
+            get { return _print; }
+            set { _print = value; }
+        }
     }
 }

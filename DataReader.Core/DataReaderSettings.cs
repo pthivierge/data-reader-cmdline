@@ -13,6 +13,12 @@ namespace DataReader.Core
     /// </summary>
     public class DataReaderSettings
     {
+        private ReadingType _dataReadType = ReadingType.Bulk;
+        private int _tagGroupSize = 50000;
+        private int _maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 16);
+        private TimeSpan _timeIntervalPerDataRequest = TimeSpan.FromDays(1);
+        private int _bulkParallelChunkSize = 10000;
+        private int _bulkPageSize = 1000;
 
         public enum ReadingType
         {
@@ -21,32 +27,47 @@ namespace DataReader.Core
         }
 
 
-
         // General settings
 
         /// <summary>
         /// The read method that will be used.  Can be bulk or parallel.  Default is Bulk.
         /// </summary>
-        public ReadingType DataReadType { get; set; } = ReadingType.Bulk;
+        public ReadingType DataReadType
+        {
+            get { return _dataReadType; }
+            set { _dataReadType = value; }
+        }
 
         /// <summary>
         /// Period of time of each data request against the PI Data Archive.
         /// Default: 1 day.
         /// </summary>
-        public TimeSpan TimeIntervalPerDataRequest { get; set; } = TimeSpan.FromDays(1);
+        public TimeSpan TimeIntervalPerDataRequest
+        {
+            get { return _timeIntervalPerDataRequest; }
+            set { _timeIntervalPerDataRequest = value; }
+        }
 
         /// <summary>
         /// Defines the number of tags that will be put in groups that will be formed after the tag search.
         /// These groups will be passed to the DataReader for the read to be performed. Default: 50 000.
         /// </summary>
-        public int TagGroupSize { get; set; } = 50000;
+        public int TagGroupSize
+        {
+            get { return _tagGroupSize; }
+            set { _tagGroupSize = value; }
+        }
 
         /// <summary>
         /// Defines the maximum number of threads to be used.
         /// PI Data Archive has 16 threads to server bulk calls, so it may be good to limit a little
         /// Default: Math.Min(Environment.ProcessorCount, 16)
         /// </summary>
-        public int MaxDegreeOfParallelism { get; set; } = Math.Min(Environment.ProcessorCount, 16);
+        public int MaxDegreeOfParallelism
+        {
+            get { return _maxDegreeOfParallelism; }
+            set { _maxDegreeOfParallelism = value; }
+        }
 
 
         // settings for bulk
@@ -56,12 +77,20 @@ namespace DataReader.Core
         /// Before performing the bulk queries, the TagGroupSize is splitted into smaller groups that will be the size of this parameter.
         /// These smaller groups will then be called in a multi-threded way. Default 10 000;
         /// </summary>
-        public int BulkParallelChunkSize { get; set; } = 10000;
+        public int BulkParallelChunkSize
+        {
+            get { return _bulkParallelChunkSize; }
+            set { _bulkParallelChunkSize = value; }
+        }
 
         /// <summary>
         /// Page size for bulk queries.  
         /// </summary>
-        public int BulkPageSize { get; set; } = 1000;
+        public int BulkPageSize
+        {
+            get { return _bulkPageSize; }
+            set { _bulkPageSize = value; }
+        }
 
 
         /// <summary>
@@ -80,7 +109,6 @@ namespace DataReader.Core
             if (estimatedTagsCount < 200000)
             {
                 TagGroupSize = estimatedTagsCount/10;
-
                 TagGroupSize = TagGroupSize <= 0 ? 1 : TagGroupSize;
 
             }

@@ -68,7 +68,11 @@ namespace DataReader.CommandLine
                     ValidateSettings(options);
 
                     var readerSettings = new DataReaderSettings();
-                    piConnection = new PIConnection(options.Server);
+
+                    if(options.Server.Length==1)
+                        piConnection = new PIConnection(options.Server[0]);
+                    else
+                        piConnection = new PIConnection(options.Server[0], options.Server[1]);
 
                     if (options.testTagSearch != null && options.testTagSearch.Length > 0)
                     {
@@ -109,7 +113,7 @@ namespace DataReader.CommandLine
                         // defines rejected states to filter out
                         var rejectedStates = new[]
                         {
-                            "ptcreated",
+                            "pt created",
                             "snapfix",
                             "shutdown",
                             "no data"
@@ -130,8 +134,10 @@ namespace DataReader.CommandLine
 
                         var orchestrator = new Orchestrator(options.StartTime, options.EndTime,
                             readerSettings.TimeIntervalPerDataRequest, dataReader);
+
                         var tagsLoader = new TagsLoader(piConnection.GetPiServer(), options.TagQueries,
                             readerSettings.TagGroupSize, orchestrator);
+
                         var statistics = new Statistics();
 
                         // starts the orchestrator

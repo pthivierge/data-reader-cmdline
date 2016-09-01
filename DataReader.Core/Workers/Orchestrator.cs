@@ -26,7 +26,7 @@ namespace DataReader.Core
             var st = new AFTime(startTime);
             var et = new AFTime(endTime);
 
-            _logger.InfoFormat("Getting time intervals: {0},{1},{2}", interval.TotalSeconds, st, et);
+            _logger.InfoFormat("Getting time intervals: {0},{1},{2}", interval.TotalSeconds, st.LocalTime, et.LocalTime);
             _datesIntervals = TimeStampsGenerator.Get(interval, st, et);
 
             _logger.InfoFormat("Will work with {0} dates intervals", _datesIntervals.Count);
@@ -62,8 +62,12 @@ namespace DataReader.Core
 
 
             // for each time period, triggers the read for all the tags
-            for (var i = 2; i < _datesIntervals.Count - 1; i++)
+            for (var i = 0; i < _datesIntervals.Count - 1; i++)
             {
+
+               // _logger.DebugFormat("Times:{0:G} - {1:G}", _datesIntervals[i].ToLocalTime(), _datesIntervals[i + 1].AddSeconds(-1).ToLocalTime());
+               
+
                 if (cancelToken.IsCancellationRequested)
                     break;
 
@@ -72,7 +76,7 @@ namespace DataReader.Core
                     var newQuery = new DataQuery()
                     {
                         StartTime = _datesIntervals[i],
-                        EndTime = _datesIntervals[i + 1],
+                        EndTime = _datesIntervals[i + 1].AddSeconds(-1), // we remove one second to avoid getting duplicate values at this same time each time
                         QueryId = _queryId++,
                         PiPoints = dataQuery.PiPoints,
                         ChunkId = i

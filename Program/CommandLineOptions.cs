@@ -28,8 +28,8 @@ namespace DataReader.CommandLine
     /// </summary>
     public class CommandLineOptions
     {
-        [Option('s', "server", HelpText = "PI Data Archive Server name to connect",Required = true)]
-        public string Server { get; set; }
+        [OptionArray('s', "server", HelpText = "PI Data Archive Server name to connect to.  You can connect to a specific collective member by passing 2 strings: [collectiveName] [memberName], names must be same as the ones defined in the KST.",Required = true)]
+        public string[] Server { get; set; }
 
         [OptionArray('t', "tagQueries", HelpText = "Queries to load the tags, the more you add the best and the sooner that app will start reading data. This option accepts many queries separeted by a space. e.g. sinus* SSN_NP60* \"tag:<>sin* DataType:Float\"")]
         public string[] TagQueries { get; set; }

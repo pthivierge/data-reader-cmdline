@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using log4net;
+using OSIsoft.AF;
 using OSIsoft.AF.PI;
 
 namespace DataReader.Core
@@ -28,9 +29,12 @@ namespace DataReader.Core
     /// </summary>
     public class PIConnection
     {
-        private readonly ILog _logger = LogManager.GetLogger(typeof (PIConnection));
-        private readonly PIServer _piServer;
+        private readonly ILog _logger = LogManager.GetLogger(typeof(PIConnection));
+        private PIServer _piServer;
         private readonly PIServers _piServers = new PIServers();
+
+        private string _memberName = null;
+
 
         /// <summary>
         ///     Initialize a PI Server Connnection object.
@@ -38,6 +42,20 @@ namespace DataReader.Core
         /// </summary>
         /// <param name="server">Name of the PI System (AF Server) to connect to</param>
         public PIConnection(string server)
+        {
+            GetServer(server);
+        }
+
+
+        public PIConnection(string collectiveName, string collectiveMember)
+        {
+            GetServer(collectiveName);
+            _memberName = collectiveMember;
+
+        }
+
+
+        private void GetServer(string server)
         {
             if (_piServers.Contains(server))
                 _piServer = _piServers[server];
@@ -54,13 +72,24 @@ namespace DataReader.Core
 
         public bool Connect()
         {
-            _logger.InfoFormat("Trying to connect to PI Data Archive {0}. As {1}", _piServer.Name,
-                _piServer.CurrentUserName);
+
 
             try
             {
-                _piServer.Connect();
 
+                if (_memberName == null)
+                {
+                    _logger.InfoFormat("Trying to connect to PI Data Archive {0}. As {1}", _piServer.Name,
+                   _piServer.CurrentUserName);
+                    _piServer.Connect();
+                }
+
+                else
+                {
+                    _logger.InfoFormat("Connecting to member: {0}",_memberName);
+                    _piServer = ConnectMember(_piServer.Name, _memberName);
+                }
+                
                 _logger.InfoFormat("Connected to {0}. As {1}", _piServer.Name, _piServer.CurrentUserName);
                 return true;
             }
@@ -71,5 +100,33 @@ namespace DataReader.Core
 
             return false;
         }
+
+
+        private PIServer ConnectMember(string collectiveName, string memberName)
+        {
+            var servers = new PIServers();
+            var server = servers[collectiveName];
+
+            if (server.Collective == null)
+                throw new Exception("This server is not a collective");
+
+            var member = server.Collective.Members[memberName];
+            if (member != null)
+            {
+                server = member.ConnectDirect();
+                var currentUser = server.CurrentUserName;
+                Console.WriteLine(currentUser);
+
+            }
+            else
+            {
+                throw new Exception("Failed to find the server member in the collective's servers list.  Veryfy that the name is correct");
+            }
+
+            return server;
+        }
+
+
+
     }
 }
