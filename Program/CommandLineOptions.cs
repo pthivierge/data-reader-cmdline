@@ -68,7 +68,7 @@ namespace DataReader.CommandLine
         [Option("outFileName",HelpText ="file name to output data.  Works with the EnableWrite option. A datetime and a .csv extension wil appended the the name.  ex: c:\\temp\\data would suffice",MutuallyExclusiveSet = "WriteData")]
         public string OutfileName { get; set; }
 
-        [Option("eventsPerFile", HelpText = "Number of events to write per file", DefaultValue = 50000, MutuallyExclusiveSet = "WriteData")]
+        [Option("eventsPerFile", HelpText = "Number of events to write per file", DefaultValue = 500000, MutuallyExclusiveSet = "WriteData")]
         public int EventsPerFile { get; set; }
 
 
