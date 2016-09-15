@@ -102,7 +102,7 @@ namespace DataReader.Core
                             IDataFilter[] dataFilters=null;
 
                             var fileName = _baseOutputFileName + "_" + writeInfo.ChunkId + "_" +
-                                           writeInfo.StartTime.ToLocalTime().ToIsoReadable() + " to " + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
+                                           writeInfo.StartTime.ToLocalTime().ToIsoReadable() + "_to_" + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
 
                             writer.SetName(fileName);
 
