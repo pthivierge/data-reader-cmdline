@@ -41,49 +41,49 @@ Read values for the last 30 days and output the result into a file:
 
 
 
-  -s, --server               Required. PI Data Archive Server name to connect
+    -s, --server               Required. PI Data Archive Server name to connect
 
-  -t, --tagQueries           Queries to load the tags, the more you add the
-                             best and the sooner that app will start reading
-                             data. This option accepts many queries separeted
-                             by a space. e.g. sinus* SSN_NP60* "tag:<>sin*
-                             DataType:Float"
+    -t, --tagQueries           Queries to load the tags, the more you add the
+                               best and the sooner that app will start reading
+                               data. This option accepts many queries separeted
+                               by a space. e.g. sinus* SSN_NP60* "tag:<>sin*
+                               DataType:Float"
 
-  --testTagSearch            Makes a serch will all passed filters and prints
-                             the results to the screen. e.g. sinus* SSN_NP60*
-                             "tag:<>sin* DataType:Float"
+    --testTagSearch            Makes a serch will all passed filters and prints
+                               the results to the screen. e.g. sinus* SSN_NP60*
+                               "tag:<>sin* DataType:Float"
 
-  --printTags                Print all tag names when doing the testTagSearch
+    --printTags                Print all tag names when doing the testTagSearch
 
-  --estimatedEventsPerDay    (Default: 4) provides an estimate of the number of
-                             events per tag per day, to help optimising the
-                             speed of reading
+    --estimatedEventsPerDay    (Default: 4) provides an estimate of the number of
+                               events per tag per day, to help optimising the
+                               speed of reading
 
-  --estimatedTagsCount       (Default: 10000) estimate of the total number of
-                             tags that will be read, this will also help
-                             optimizing the application
+    --estimatedTagsCount       (Default: 10000) estimate of the total number of
+                               tags that will be read, this will also help
+                               optimizing the application
 
-  --eventsPerRead            (Default: 10000) Defines how many events should be
-                             read per data call.
+    --eventsPerRead            (Default: 10000) Defines how many events should be
+                               read per data call.
 
-  --st                       (Default: *-1d) Start Time to query data
+    --st                       (Default: *-1d) Start Time to query data
 
-  --et                       (Default: *) End Time to query data
+    --et                       (Default: *) End Time to query data
 
-  --enableWrite              (Default: False) Outputs the data into text files.  I not specified data is read but is not output.
+    --enableWrite              (Default: False) Outputs the data into text files.  I not specified data is read but is not output.
 
-  --writersCount             (Default: 4) Defines the numbers of files writers
-                             that will runs simultaneously.
+    --writersCount             (Default: 4) Defines the numbers of files writers
+                               that will runs simultaneously.
 
-  --outFileName              file name to output data.  Works with the
-                             EnableWrite option. A datetime and a .csv
-                             extension wil appended the the name.  ex:
-                             c:\temp\data would suffice
+    --outFileName              file name to output data.  Works with the
+                               EnableWrite option. A datetime and a .csv
+                               extension wil appended the the name.  ex:
+                               c:\temp\data would suffice
 
-  --eventsPerFile            (Default: 50000) Number of events to write per
-                             file
+    --eventsPerFile            (Default: 50000) Number of events to write per
+                               file
 
-  --help                     Display this help screen.
+    --help                     Display this help screen.
 
 
 
