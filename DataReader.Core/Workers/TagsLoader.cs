@@ -109,7 +109,7 @@ namespace DataReader.Core
             // enqueue the query to be processed
             _orchestrator.IncomingPiPoints.Add(dataQuery, cancelToken);
 
-            _logger.InfoFormat("TagsLoader loaded {0} for data collection. Total {1} tags loaded.", _tagChunkSize, _tagCount);
+            _logger.InfoFormat("TagsLoader loaded {0} for data collection. Total {1} tags loaded.", pipoints.Count, _tagCount);
         }
 
         public IEnumerable<PIPoint> Search(string query)
