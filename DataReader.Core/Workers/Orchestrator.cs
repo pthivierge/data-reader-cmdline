@@ -60,7 +60,7 @@ namespace DataReader.Core
             {
 
                 dataQuery.StartTime = _datesIntervals[0];
-                dataQuery.EndTime = _datesIntervals[1];
+                dataQuery.EndTime = _datesIntervals[1].AddSeconds(-1);
                 dataQuery.QueryId = _queryId++;
                 dataQuery.ChunkId = 1;
                 // keep the taglist for the next time period query
@@ -77,10 +77,17 @@ namespace DataReader.Core
 
 
             // for each time period, triggers the read for all the tags
-            for (var i = 0; i < _datesIntervals.Count - 1; i++)
+            if (_datesIntervals.Count <3)
+            {
+                _logger.Warn("Data collection completed as there is not enough time ranges to continue.");
+                return;
+            }
+                
+                
+            for (var i = 1; i < _datesIntervals.Count - 1; i++)
             {
 
-               // _logger.DebugFormat("Times:{0:G} - {1:G}", _datesIntervals[i].ToLocalTime(), _datesIntervals[i + 1].AddSeconds(-1).ToLocalTime());
+                _logger.DebugFormat("Times:{0:G} - {1:G}", _datesIntervals[i].ToLocalTime(), _datesIntervals[i + 1].AddSeconds(-1).ToLocalTime());
                
 
                 if (cancelToken.IsCancellationRequested)
