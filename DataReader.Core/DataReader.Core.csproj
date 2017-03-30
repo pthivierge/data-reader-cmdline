@@ -62,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Filters\FiltersFactory.cs" />
+    <Compile Include="Filters\SystemStatesFilter.cs" />
     <Compile Include="WriteInfo.cs" />
     <Compile Include="DataQuery.cs" />
     <Compile Include="Filters\DigitalStatesFilter.cs" />

@@ -29,55 +29,19 @@ namespace DataReader.Core
 
         private readonly ILog _logger = LogManager.GetLogger(typeof(FiltersFactory));
         private string[] _digitalStatesToIgnore;
-        FiltersTypesEnum[] _filtersTypes;
-
-
-        public enum FiltersTypesEnum
-        {
-            DigitalStatesFilter,
-            DuplicateValuesFilter
-        }
-
-        public void SetFilters(params FiltersTypesEnum[] filtersTypes)
-        {
-            _filtersTypes = filtersTypes;
-        }
-
-        public void SetDigitalStatesFilters(params string[] statesToIgnore)
-        {
-            _digitalStatesToIgnore = statesToIgnore.ToArray();
-        }
-
         
+        private List<IDataFilter> _filters=new List<IDataFilter>();
 
+
+        public void AddFilter(IDataFilter filter)
+        {
+            _logger.InfoFormat("Added {0}.  Will be used to process each of the values.",filter.GetType().Name);
+            _filters.Add(filter);
+        }
 
         public IDataFilter[] GetFilters()
         {
-            if (_filtersTypes == null || _filtersTypes.Length<1)
-                return null;
-
-            var filters = new List<IDataFilter>();
-
-            foreach (var filtersTypesEnum in _filtersTypes)
-            {
-                switch (filtersTypesEnum)
-                {
-                    case FiltersTypesEnum.DigitalStatesFilter:
-                        filters.Add(new DigitalStatesFilter(_digitalStatesToIgnore));
-                        break;
-
-                    case FiltersTypesEnum.DuplicateValuesFilter:
-                        filters.Add(new DuplicateValuesFilter());
-                        break;
-
-                    default:
-                        _logger.Warn("Filter specified does not exist");
-                        break;
-                }
-            }
-
-            return filters.ToArray();
-
+            return _filters.ToArray();
 
         }
     }

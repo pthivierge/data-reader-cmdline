@@ -239,8 +239,9 @@ namespace DataReader.CommandLine
                         };
 
                         var filtersFactory=new FiltersFactory();
-                        filtersFactory.SetDigitalStatesFilters(rejectedStates);
-                        filtersFactory.SetFilters(FiltersFactory.FiltersTypesEnum.DigitalStatesFilter,FiltersFactory.FiltersTypesEnum.DuplicateValuesFilter);
+                        filtersFactory.AddFilter(new DigitalStatesFilter(rejectedStates));
+                        filtersFactory.AddFilter(new DuplicateValuesFilter());
+                     //   filtersFactory.AddFilter(new SystemStatesFilter());
                         
                         _logger.Info("Creating worker objects...");
                         var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount, filtersFactory);
@@ -274,11 +275,11 @@ namespace DataReader.CommandLine
 
                         statistics.Stop();
 
-                        Task.WaitAll(statsTask);
+                       Task.WaitAll(statsTask);
 
                         _logger.Info("All tasks completed successfully");
                     }
-
+  
 
                     // DEBUG
                     //  Console.ReadKey();
