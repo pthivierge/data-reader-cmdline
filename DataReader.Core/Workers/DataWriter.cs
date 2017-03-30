@@ -140,6 +140,15 @@ namespace DataReader.Core
                 }
             }
 
+            // wait for any remaining task
+            Task.WaitAll(writers.Where(w => w.ActiveTask!=null).Select(w=>w.ActiveTask).ToArray());
+
+            // dispose the writers properly to flush the data 
+            foreach (var writer in writers)
+            {
+                if (writer != null) writer.Dispose();
+            }
+
             _logger.InfoFormat("Datawriter completed.");
         }
 
