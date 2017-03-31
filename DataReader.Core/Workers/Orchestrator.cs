@@ -77,13 +77,6 @@ namespace DataReader.Core
 
 
             // for each time period, triggers the read for all the tags
-            if (_datesIntervals.Count <3)
-            {
-                _logger.Warn("Data collection completed as there is not enough time ranges to continue.");
-                return;
-            }
-                
-                
             for (var i = 1; i < _datesIntervals.Count - 1; i++)
             {
 
