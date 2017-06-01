@@ -152,19 +152,31 @@
     <PostBuildEvent>::----------------------------------------
 :: Copy to buid folder
 ::----------------------------------------
-:copytoBuildFolder
+:
+:: copytoBuildFolder
+
 SET output="..\..\..\Build"
+
 if not exist "%25output%25" mkdir "%25output%25"
+
 if not exist "%25output%25\bin" mkdir "%25output%25\bin"
+
 
 robocopy "$(TargetDir)." "%25output%25\." *.exe *.pdb *.config *.ini *.ico *.html *.cfg.xml /XO /NJH /NP /S
 robocopy "$(TargetDir)." "%25output%25\bin\." *.dll /XO /NJH /NP /S
+
 if errorlevel 4 goto BuildEventFailed
+
 if errorlevel 0 goto end
 
-:BuildEventFailed echo FILECOPY for $(ProjectName) FAILED
+
+:BuildEventFailed 
+echo FILECOPY for $(ProjectName) FAILED
+
 exit 1
+
 :end echo FILECOPY for $(ProjectName) COMPLETED OK
+
 exit 0</PostBuildEvent>
   </PropertyGroup>
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
