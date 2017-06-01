@@ -17,6 +17,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,14 +36,25 @@ namespace DataReader.Core
         private string _baseOutputFileName = null;
         FiltersFactory _filtersFactory;
 
+        private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
+        private readonly string _decimalSeparator;
+        private readonly string _listSeparator;
+
+
+
         public readonly BlockingCollection<WriteInfo> DataQueue =
             new BlockingCollection<WriteInfo>();
 
         private readonly List<FileWriter> writers = new List<FileWriter>();
+        
 
         public DataWriter(string outputFileName, int eventsPerFile, int writersCount, FiltersFactory filtersFactory)
         {
-            _baseOutputFileName = outputFileName;
+
+           _decimalSeparator = _culture.NumberFormat.NumberDecimalSeparator;
+        _listSeparator = _culture.TextInfo.ListSeparator;
+
+        _baseOutputFileName = outputFileName;
             _filtersFactory = filtersFactory;
 
             // here we create the instances of the writers we need
@@ -63,6 +75,7 @@ namespace DataReader.Core
         protected override void DoTask(CancellationToken cancelToken)
         {
             _logger.InfoFormat("Writing data task started...");
+
 
 
             // gets currently available values from the queue
@@ -119,7 +132,7 @@ namespace DataReader.Core
                                     
                                     if (!isFiltered)
                                     {
-                                        var line = afValue.Timestamp.LocalTime + "," + afValue.Value + "," + afValue.PIPoint.Name;
+                                        var line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + afValue.PIPoint.Name;
                                         writer.WriteLine(line);
                                     }
                                 }
