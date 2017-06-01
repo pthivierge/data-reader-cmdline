@@ -16,8 +16,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using log4net;
+using log4net.Repository.Hierarchy;
 
 namespace DataReader.Core
 {
@@ -28,6 +31,8 @@ namespace DataReader.Core
     /// </summary>
     public class DataReaderSettings
     {
+
+        private readonly ILog _logger = LogManager.GetLogger(typeof(DataReaderSettings));
         private ReadingType _dataReadType = ReadingType.Bulk;
         private int _tagGroupSize = 50000;
         private int _maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 16);
@@ -119,10 +124,14 @@ namespace DataReader.Core
         {
             
 
-            double days = 1;
+            double daysPerRead = 1;
 
+
+            // tag group size is the amount of tags that are loaded at once from the PI DA
+            // once loaded, the tags are send to processing in blocks of Tag GroupSize
             if (estimatedTagsCount < 200000)
             {
+                
                 TagGroupSize = estimatedTagsCount/10;
                 TagGroupSize = TagGroupSize <= 0 ? 1 : TagGroupSize;
 
@@ -134,21 +143,28 @@ namespace DataReader.Core
 
             if (readType == ReadingType.Bulk)
             {
-                // eventsWanted / Total events per day
+                
                 // bulkPageSize is the number of tags that will be queried per page.
-                BulkPageSize = 1000;
-                days = ((double)eventsPerRead / ((double)estimatedEventsPerDay*BulkPageSize));
+                // here we adjust the bulk page size with the estimated tags count.
+                BulkPageSize = estimatedTagsCount < 1000 ? estimatedTagsCount : 1000;
+
+                // days Per Read is high= when eventsPerRead is high, and estimated events per day is low, --> many days per read
+                // days per Read is low = when eventsPerRead is low, and estimated events per day is high, -->many read per day (fraction number) 
+                daysPerRead = ((double)eventsPerRead / ((double)estimatedEventsPerDay * (double)BulkPageSize)); // if > 1 -> need to split the day // if <1 need to read in many days
                 BulkParallelChunkSize = (TagGroupSize/5) <=1 ? 1 : (TagGroupSize / 5);
+
+
+                _logger.DebugFormat("Autotune calculated: daysPerRead {0} - BulkParallelChunkSize {1}",daysPerRead,BulkParallelChunkSize);
 
             }
             else
             {
                 // in case we do parallel, we target 10 000 events per read
-                days = ((double)eventsPerRead / estimatedEventsPerDay);
+                daysPerRead = ((double)eventsPerRead / estimatedEventsPerDay);
             }
             
             // set a time span that will give us approximately "eventsPerRead" events per call
-            TimeIntervalPerDataRequest = TimeSpan.FromDays(days);
+            TimeIntervalPerDataRequest = TimeSpan.FromDays(daysPerRead);
            
            
 
