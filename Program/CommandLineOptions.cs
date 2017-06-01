@@ -37,6 +37,12 @@ namespace DataReader.CommandLine
         [Option("printTags", HelpText = "Print all tag names when doing the testTagSearch", MutuallyExclusiveSet = "TestTagSearch")]
         public bool testTagSearchPrintAllTags { get; set; }
 
+        [Option("removeDuplicates", HelpText = "output values will not contain duplicated values")]
+        public bool RemoveDuplicates { get; set; }
+
+        [Option("filterDigitalStates", HelpText = "output values will not contain digital states")]
+        public bool FilterDigitalStates { get; set; }
+
         [Option("estimatedEventsPerDay", HelpText = "provides an estimate of the number of events per tag per day, to help optimising the speed of reading", DefaultValue = 4)]
         public int EventsPerDay { get; set; }
 

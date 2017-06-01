@@ -37,10 +37,10 @@ namespace DataReader.CommandLine
             // if write is enabled, file name is required
             if (options.EnableWrite)
             {
-                if(string.IsNullOrEmpty(options.OutfileName))
+                if (string.IsNullOrEmpty(options.OutfileName))
                     throw new Exception("--outFileName parameter must be provided when --enableWrite is provided");
 
-                
+
                 if (!Directory.Exists(Path.GetDirectoryName(options.OutfileName) ?? ""))
                     throw new DirectoryNotFoundException("The directory does not exist for the file that is provided as --outFileName parameter");
 
@@ -51,8 +51,8 @@ namespace DataReader.CommandLine
         private static void Main(string[] args)
         {
             PIConnection piConnection;
-            var _logger = LogManager.GetLogger(typeof (Program));
-            
+            var _logger = LogManager.GetLogger(typeof(Program));
+
 
             try
             {
@@ -66,7 +66,7 @@ namespace DataReader.CommandLine
 
                     var readerSettings = new DataReaderSettings();
 
-                    if(options.Server.Length==1)
+                    if (options.Server.Length == 1)
                         piConnection = new PIConnection(options.Server[0]);
                     else
                         piConnection = new PIConnection(options.Server[0], options.Server[1]);
@@ -94,7 +94,7 @@ namespace DataReader.CommandLine
                     {
                         _logger.Info("Data reader starting...");
 
-                        
+
                         piConnection.Connect();
 
                         if (options.EventsPerDay > 0 && options.TagsCount > 0)
@@ -106,16 +106,26 @@ namespace DataReader.CommandLine
 
 
                         // starts the data writer
-                        
-                        // settings data filters to filter out the data
-                        var filtersFactory=new FiltersFactory();
-                        filtersFactory.AddFilter(new DuplicateValuesFilter());
-                        filtersFactory.AddFilter(new SystemStatesFilter());
-                        
+
+
+                        // settings data filters to filter out the data if option is specified
+                        var filtersFactory = new FiltersFactory();
+                        if (options.RemoveDuplicates)
+                        {
+                            filtersFactory.AddFilter(new DuplicateValuesFilter());
+                        }
+
+
+                        if (options.FilterDigitalStates)
+                        {
+                            filtersFactory.AddFilter(new SystemStatesFilter());
+                        }
+
+
                         _logger.Info("Creating worker objects...");
                         var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount, filtersFactory);
 
-                       var dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
+                        var dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
 
                         //dataReader = options.UseParallel
                         //    ? (IDataReader) new DataReaderParallel(readerSettings, dataWriter)
@@ -133,7 +143,8 @@ namespace DataReader.CommandLine
                         _logger.Info("Starting workers...");
                         var tagsLoaderTask = tagsLoader.Run();
                         var writerTask = dataWriter.Run();
-                        // var processorTask = dataProcessor.Run();
+
+                        // var processorTask = dataProcessor.Run(); -- not using this after determining this was not bringing much performance gain.
                         var orchestratorTask = orchestrator.Run();
                         var dataReaderTask = dataReader.Run();
                         var statsTask = statistics.Run();
@@ -144,11 +155,11 @@ namespace DataReader.CommandLine
 
                         statistics.Stop();
 
-                       Task.WaitAll(statsTask);
+                        Task.WaitAll(statsTask);
 
                         _logger.Info("All tasks completed successfully");
                     }
-  
+
 
                     // DEBUG
                     //  Console.ReadKey();
@@ -166,7 +177,7 @@ namespace DataReader.CommandLine
 
             catch (Exception ex)
             {
-                
+
                 _logger.Error(ex);
             }
         }
