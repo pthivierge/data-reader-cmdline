@@ -1,6 +1,7 @@
 # DataReader
-This command line application, wrote with C# reads data from the PI Data Archive.  
- 
+This command line application, wrote with C# reads data from the OSIsoft PI Data Archive.  
+It was created to extract very large amounts of data in an efficient manner, using knowledge of the internals of the PI Data Archive and the windows system to maximize throughput.
+
 
 # Build
 Once compiled, it created a **Build** folder in the solution folder.  You can take this folder and place it on the system you would like to make the test on.
