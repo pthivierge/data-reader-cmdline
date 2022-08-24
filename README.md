@@ -4,7 +4,7 @@ It was created to extract very large amounts of data in an efficient manner, usi
 
 
 # Build
-Once compiled, it created a **Build** folder in the solution folder.  You can take this folder and place it on the system you would like to make the test on.
+Once compiled, it creates a **Build** folder in the solution folder.  You can take this folder and place it on the system you would like to make the test on.
 
 # Prerequisites on host system
 * .NET Framework 4.5+
@@ -12,7 +12,7 @@ Once compiled, it created a **Build** folder in the solution folder.  You can ta
 
 # Getting started
 
-## Test PI Point Query(ies)
+## Initial Step - Test PI Point Query(ies)
 
 Before starting your data retrieval, it is best to check the tag filters you will be using to make sure you will have all the tags you need.  The application will start reading the data faster if you provide several small queries instead of a big one (e.g. *).
 
