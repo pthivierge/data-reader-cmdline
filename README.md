@@ -77,6 +77,29 @@ Extract daily summary statistics for the last 30 days:
 DataReader.exe -s PIServer01 -t "tag:=Reactor*" --st *-30d --et * --enableSummary --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\daily_summary"
 ```
 
+### Using Tag File for Large Number of Tags
+When you have many tags and exceed the command line length limit, use a tag file:
+
+**Create a file `C:\temp\tags.txt`:**
+```
+S4100_PLC_001!S4100_IIC0319_E_PV_HMI_R
+S4100_PLC_001!S4100_CBE003_M1_C_SP_HMI_R
+S4100_PLC_001!S4100_II0121_A_DATA_HMI_ST.In
+# You can add comments with #
+4100-CJA-001-M1.courant_moyen
+S4100_PLC_001!S4100_LIT0319_DATA_HMI_ST.OUT
+```
+
+**Run the command:**
+```bash
+DataReader.exe -s PIServer01 --tagFile "C:\temp\tags.txt" --st "2026-01-01 07:00:00" --et "2026-01-01 23:59:59" --enableSummary --summaryTypes "All" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\summary"
+```
+
+You can also combine tag queries and tag file:
+```bash
+DataReader.exe -s PIServer01 -t "tag:=Reactor*" --tagFile "C:\temp\tags.txt" --st *-30d --et * --enableSummary --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\combined_summary"
+```
+
 ### Hourly Totals for Flow Tags
 Calculate hourly totals with time-weighted calculation:
 
@@ -148,6 +171,13 @@ DataReader.exe -s MyCollective MemberServer01 -t * --st *-1d --et * --enableWrit
                           better and the sooner the app will start reading data.
                           This option accepts many queries separated by a space.
                           e.g. sinus* SSN_NP60* "tag:<>sin* DataType:Float"
+
+--tagFile                 Path to a text file containing tag names or queries,
+                          one per line. Use this when you have many tags to 
+                          avoid command line length limits (Windows limit: 
+                          8,191 characters). Lines starting with # are treated 
+                          as comments and ignored. Can be combined with 
+                          --tagQueries option.
 
 --testTagSearch           Makes a search with all passed filters and prints
                           the results to the screen.
@@ -257,7 +287,7 @@ Example:
 ```
 
 ## Summary Data Output
-CSV files with metadata header followed by summary values:
+CSV files with metadata header followed by summary values. Summary data includes an additional `AggregateType` column to identify which summary calculation each value represents:
 
 Example:
 ```
@@ -265,9 +295,13 @@ Example:
 # SummaryTypes: Average, Minimum, Maximum
 # Interval: 1d
 # CalculationBasis: TimeWeighted
-# Timestamp,Value,TagName
-2024-01-15 00:00:00,23.45,Reactor1_Temperature
-2024-01-16 00:00:00,24.12,Reactor1_Temperature
+# Timestamp,Value,TagName,AggregateType
+2024-01-15 00:00:00,23.45,Reactor1_Temperature,Average
+2024-01-15 00:00:00,20.12,Reactor1_Temperature,Minimum
+2024-01-15 00:00:00,26.78,Reactor1_Temperature,Maximum
+2024-01-16 00:00:00,24.12,Reactor1_Temperature,Average
+2024-01-16 00:00:00,21.34,Reactor1_Temperature,Minimum
+2024-01-16 00:00:00,27.45,Reactor1_Temperature,Maximum
 ```
 
 # Additional Resources

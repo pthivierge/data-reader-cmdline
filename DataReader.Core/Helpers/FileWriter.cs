@@ -93,10 +93,10 @@ namespace DataReader.Core
                 }
 
                // var time = (BatchOperationTime - new DateTime(1970, 1, 1)).TotalSeconds;
-                // i=file index(count), w=writer id, b=batch time when the command line was run
+                // i=file index(count), w=writer id(count), b=batch time when the command line was run
                 //  var fullFileName = string.Format("{0}_i{2}_w{3}_b{1}", fileName, time, fileIndex, _writerIndex);
 
-                var fullFileName = string.Format("{0}_i{1}_w{2}", fileName, fileIndex, _writerIndex);
+                var fullFileName = string.Format("{0}_i{1}_w{2}.csv", fileName, fileIndex, _writerIndex);
 
 
                 _fileStream = new FileStream(fullFileName, FileMode.CreateNew);

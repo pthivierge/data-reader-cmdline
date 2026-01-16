@@ -14,6 +14,7 @@
 //  limitations under the License.
 #endregion
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -45,6 +46,20 @@ namespace DataReader.CommandLine
                     throw new DirectoryNotFoundException("The directory does not exist for the file that is provided as --outFileName parameter");
 
 
+            }
+
+            // validate tag file exists if specified
+            if (!string.IsNullOrEmpty(options.TagFile))
+            {
+                if (!File.Exists(options.TagFile))
+                    throw new FileNotFoundException("The tag file specified with --tagFile does not exist", options.TagFile);
+            }
+
+            // must have either tag queries or tag file
+            if ((options.TagQueries == null || options.TagQueries.Length == 0) && 
+                string.IsNullOrEmpty(options.TagFile))
+            {
+                throw new Exception("You must provide either --tagQueries or --tagFile parameter");
             }
         }
 
@@ -90,7 +105,7 @@ namespace DataReader.CommandLine
                         }
                     }
 
-                    if (options.TagQueries != null && options.TagQueries.Length > 0)
+                    if ((options.TagQueries != null && options.TagQueries.Length > 0) || !string.IsNullOrEmpty(options.TagFile))
                     {
                         _logger.Info("Data reader starting...");
 
@@ -152,7 +167,25 @@ namespace DataReader.CommandLine
                         var orchestrator = new Orchestrator(options.StartTime, options.EndTime,
                             readerSettings.TimeIntervalPerDataRequest, dataReader);
 
-                        var tagsLoader = new TagsLoader(piConnection.GetPiServer(), options.TagQueries,
+                        // Combine tag queries from command line and file
+                        var allTagQueries = new List<string>();
+                        if (options.TagQueries != null && options.TagQueries.Length > 0)
+                        {
+                            allTagQueries.AddRange(options.TagQueries);
+                        }
+
+                        if (!string.IsNullOrEmpty(options.TagFile))
+                        {
+                            _logger.InfoFormat("Reading tags from file: {0}", options.TagFile);
+                            var fileQueries = File.ReadAllLines(options.TagFile)
+                                .Where(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("#"))
+                                .Select(line => line.Trim())
+                                .ToArray();
+                            _logger.InfoFormat("Loaded {0} tag queries from file", fileQueries.Length);
+                            allTagQueries.AddRange(fileQueries);
+                        }
+
+                        var tagsLoader = new TagsLoader(piConnection.GetPiServer(), allTagQueries.ToArray(),
                             readerSettings.TagGroupSize, orchestrator);
 
                         var statistics = new Statistics();

@@ -100,6 +100,9 @@ namespace DataReader.Core
                     try
                     {
                         var summaryDataList = new List<AFValues>();
+                        var summaryTypeMap = new Dictionary<int, string>();
+                        var tagNameMap = new Dictionary<int, string>();
+                        var valueIndex = 0;
 
                         foreach (var point in pts)
                         {
@@ -119,7 +122,13 @@ namespace DataReader.Core
                                 var values = kvp.Value;
                                 
                                 var summaryValues = new AFValues();
-                                summaryValues.AddRange(values);
+                                foreach (var val in values)
+                                {
+                                    summaryTypeMap[valueIndex] = summaryType.ToString();
+                                    tagNameMap[valueIndex] = point.Name;
+                                    summaryValues.Add(val);
+                                    valueIndex++;
+                                }
                                 summaryDataList.Add(summaryValues);
                             }
                         }
@@ -139,7 +148,9 @@ namespace DataReader.Core
                                     { "SummaryTypes", _summaryTypes.ToString() },
                                     { "Interval", _summaryInterval.ToString() },
                                     { "CalculationBasis", _calculationBasis.ToString() }
-                                }
+                                },
+                                TagNames = tagNameMap,
+                                SummaryTypes = summaryTypeMap
                             };
 
                             _dataWriter.DataQueue.Add(writeInfo, cancelToken);

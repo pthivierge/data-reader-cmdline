@@ -31,6 +31,9 @@ namespace DataReader.CommandLine
         [OptionArray('t', "tagQueries", HelpText = "Queries to load the tags, the more you add the best and the sooner that app will start reading data. This option accepts many queries separeted by a space. e.g. sinus* SSN_NP60* \"tag:<>sin* DataType:Float\"")]
         public string[] TagQueries { get; set; }
 
+        [Option("tagFile", HelpText = "Path to a text file containing tag names or queries, one per line. Use this when you have many tags to avoid command line length limits.")]
+        public string TagFile { get; set; }
+
         [OptionArray("testTagSearch", HelpText = "Makes a serch will all passed filters and prints the results to the screen. e.g. sinus* SSN_NP60* \"tag:<>sin* DataType:Float\"", MutuallyExclusiveSet = "TestTagSearch")]
         public string[] testTagSearch { get; set; }
 

@@ -35,6 +35,10 @@ namespace DataReader.Core
         public bool IsSummaryData { get; set; }
         
         public Dictionary<string, string> Metadata { get; set; }
+        
+        public Dictionary<int, string> TagNames { get; set; }
+        
+        public Dictionary<int, string> SummaryTypes { get; set; }
     }
 }
 

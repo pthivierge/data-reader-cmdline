@@ -26,8 +26,6 @@ using OSIsoft.AF.Asset;
 namespace DataReader.Core
 {
 
-
-
     /// <summary>
     ///     This class
     /// </summary>
@@ -135,9 +133,10 @@ namespace DataReader.Core
                                 {
                                     writer.WriteLine(string.Format("# {0}: {1}", kvp.Key, kvp.Value));
                                 }
-                                writer.WriteLine("# Timestamp" + _listSeparator + "Value" + _listSeparator + "TagName");
+                                writer.WriteLine("# Timestamp" + _listSeparator + "Value" + _listSeparator + "TagName" + _listSeparator + "AggregateType");
                             }
 
+                            var valueIndex = 0;
                             foreach (var afValues in writeInfo.Data)
                             {
                                 foreach (var afValue in afValues)
@@ -146,9 +145,31 @@ namespace DataReader.Core
                                     
                                     if (!isFiltered)
                                     {
-                                        var line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + afValue.PIPoint.Name;
+                                        string tagName;
+                                        string line;
+                                        
+                                        if (writeInfo.IsSummaryData && writeInfo.TagNames != null && writeInfo.TagNames.ContainsKey(valueIndex))
+                                        {
+                                            tagName = writeInfo.TagNames[valueIndex];
+                                            string aggregateType = writeInfo.SummaryTypes != null && writeInfo.SummaryTypes.ContainsKey(valueIndex) 
+                                                ? writeInfo.SummaryTypes[valueIndex] 
+                                                : "";
+                                            line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + tagName + _listSeparator + aggregateType;
+                                        }
+                                        else if (afValue.PIPoint != null)
+                                        {
+                                            tagName = afValue.PIPoint.Name;
+                                            line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + tagName;
+                                        }
+                                        else
+                                        {
+                                            tagName = "Unknown";
+                                            line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + tagName;
+                                        }
+                                        
                                         writer.WriteLine(line);
                                     }
+                                    valueIndex++;
                                 }
                             }
 
