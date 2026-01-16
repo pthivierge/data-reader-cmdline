@@ -116,6 +116,11 @@ namespace DataReader.Core
 
                             var fileName = _baseOutputFileName + "_" + writeInfo.ChunkId + "_" +
                                            writeInfo.StartTime.ToLocalTime().ToIsoReadable() + "_to_" + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
+                            
+                            if (writeInfo.IsSummaryData)
+                            {
+                                fileName += "_summary";
+                            }
 
                             writer.SetName(fileName);
 
@@ -123,6 +128,15 @@ namespace DataReader.Core
                             if (_filtersFactory != null)
                                 dataFilters = _filtersFactory.GetFilters();
 
+                            if (writeInfo.IsSummaryData && writeInfo.Metadata != null)
+                            {
+                                writer.WriteLine("# Summary Data Export");
+                                foreach (var kvp in writeInfo.Metadata)
+                                {
+                                    writer.WriteLine(string.Format("# {0}: {1}", kvp.Key, kvp.Value));
+                                }
+                                writer.WriteLine("# Timestamp" + _listSeparator + "Value" + _listSeparator + "TagName");
+                            }
 
                             foreach (var afValues in writeInfo.Data)
                             {

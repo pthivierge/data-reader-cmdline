@@ -31,6 +31,10 @@ namespace DataReader.Core
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public long SubChunkId { get; set; }
+        
+        public bool IsSummaryData { get; set; }
+        
+        public Dictionary<string, string> Metadata { get; set; }
     }
 }
 

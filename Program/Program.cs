@@ -125,7 +125,25 @@ namespace DataReader.CommandLine
                         _logger.Info("Creating worker objects...");
                         var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount, filtersFactory);
 
-                        var dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
+                        IDataReader dataReader;
+                        
+                        if (options.EnableSummary)
+                        {
+                            _logger.Info("Using Summary data reader for aggregate data extraction");
+                            dataReader = new DataReaderSummary(
+                                readerSettings, 
+                                dataWriter, 
+                                options.EnableWrite,
+                                options.SummaryTypes,
+                                options.SummaryInterval,
+                                options.CalculationBasis,
+                                options.TimestampCalculation);
+                        }
+                        else
+                        {
+                            _logger.Info("Using Bulk data reader for raw data extraction");
+                            dataReader = new DataReaderBulk(readerSettings, dataWriter, options.EnableWrite);
+                        }
 
                         //dataReader = options.UseParallel
                         //    ? (IDataReader) new DataReaderParallel(readerSettings, dataWriter)

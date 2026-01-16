@@ -63,6 +63,23 @@ namespace DataReader.CommandLine
         [Option("et", HelpText = "End Time to query data", DefaultValue = "*")]
         public string EndTime { get; set; }
         
+        // options related to summary/aggregate data
+        
+        [Option("enableSummary", HelpText = "Extract aggregate/summary data (average, min, max, etc.) instead of raw data", DefaultValue = false, MutuallyExclusiveSet = "DataMode")]
+        public bool EnableSummary { get; set; }
+
+        [Option("summaryTypes", HelpText = "Summary types to calculate: Total, Average, Minimum, Maximum, Range, StdDev, PopulationStdDev, Count, PercentGood, All. Use comma-separated values for multiple types.", DefaultValue = "Average,Minimum,Maximum")]
+        public string SummaryTypes { get; set; }
+
+        [Option("summaryInterval", HelpText = "Interval duration for each summary calculation. Examples: '1d' (1 day), '1h' (1 hour), '30m' (30 minutes). Positive durations start from earliest time, negative from latest.", DefaultValue = "1d")]
+        public string SummaryInterval { get; set; }
+
+        [Option("calculationBasis", HelpText = "Method for evaluating data: TimeWeighted, EventWeighted, TimeWeightedContinuous, TimeWeightedDiscrete, EventWeightedExcludeMostRecentEvent, EventWeightedExcludeEarliestEvent, EventWeightedIncludeBothEnds", DefaultValue = "TimeWeighted")]
+        public string CalculationBasis { get; set; }
+
+        [Option("timestampCalculation", HelpText = "Timestamp to return for each summary: Auto, EarliestTime, MostRecentTime", DefaultValue = "Auto")]
+        public string TimestampCalculation { get; set; }
+
         // options related to write
 
         [Option("enableWrite", HelpText = "Outputs the data into text files", DefaultValue = false, MutuallyExclusiveSet = "WriteData")]
