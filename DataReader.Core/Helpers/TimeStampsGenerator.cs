@@ -15,22 +15,31 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using OSIsoft.AF.Time;
 
 namespace DataReader.Core
 {
     public static class TimeStampsGenerator
     {
 
-        public static List<DateTime> Get(TimeSpan interval, DateTime startTime, DateTime endTime)
+        public static List<AFTime> Get(TimeSpan interval, AFTime startTime, AFTime endTime)
         {
 
-            var dates = new List<DateTime>();
+            var dates = new List<AFTime>();
+            
+            // For day-based intervals in local time, we need to use calendar day arithmetic
+            // to maintain the same time-of-day across DST transitions
+            // Example: 07:00:00 should remain 07:00:00 every day, not shift to 08:00:00 after DST
             
             var currentTime = startTime;
             while (currentTime < endTime)
             {
                 dates.Add(currentTime);
-                currentTime = currentTime.AddSeconds(interval.TotalSeconds);
+                
+                // Use calendar date arithmetic for local time to preserve time-of-day across DST
+                // Add interval to LocalTime as DateTime, then convert back to AFTime
+                var nextLocalTime = currentTime.LocalTime.Add(interval);
+                currentTime = new AFTime(nextLocalTime);
             }
 
             dates.Add(endTime);

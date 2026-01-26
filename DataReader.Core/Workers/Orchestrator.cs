@@ -33,15 +33,20 @@ namespace DataReader.Core
         private static int _queryId = 0;
         IDataReader _dataReader;
 
-        List<DateTime> _datesIntervals;
+        List<AFTime> _datesIntervals;
 
         public Orchestrator(string startTime, string endTime, TimeSpan interval, IDataReader dataReader)
         {
-            // prepares dates to read
+            // Parse as AFTime to properly handle time strings like "2023-02-25 07:00:00"
+            // For summary queries, local time is used to ensure daily intervals align with calendar days
             var st = new AFTime(startTime);
             var et = new AFTime(endTime);
 
-            _logger.InfoFormat("Getting time intervals: {0},{1},{2}", interval.TotalSeconds, st.LocalTime, et.LocalTime);
+            _logger.InfoFormat("Getting time intervals: {0} seconds, Start (Local): {1}, End (Local): {2}", 
+                interval.TotalSeconds, st.LocalTime, et.LocalTime);
+            _logger.InfoFormat("Getting time intervals: Start (UTC): {0}, End (UTC): {1}", 
+                st.UtcTime, et.UtcTime);
+            
             _datesIntervals = TimeStampsGenerator.Get(interval, st, et);
 
             _logger.InfoFormat("Will work with {0} dates intervals", _datesIntervals.Count);
@@ -58,9 +63,9 @@ namespace DataReader.Core
             // process the first intervall
             foreach (var dataQuery in IncomingPiPoints.GetConsumingEnumerable(cancelToken))
             {
-
-                dataQuery.StartTime = _datesIntervals[0];
-                dataQuery.EndTime = _datesIntervals[1].AddSeconds(-1);
+                // Use LocalTime for DateTime to ensure daily intervals align with calendar days (important for summary queries)
+                dataQuery.StartTime = _datesIntervals[0].LocalTime;
+                dataQuery.EndTime = _datesIntervals[1].LocalTime.AddSeconds(-1);
                 dataQuery.QueryId = _queryId++;
                 dataQuery.ChunkId = 1;
                 // keep the taglist for the next time period query
@@ -80,7 +85,9 @@ namespace DataReader.Core
             for (var i = 1; i < _datesIntervals.Count - 1; i++)
             {
 
-                _logger.DebugFormat("Times:{0:G} - {1:G}", _datesIntervals[i].ToLocalTime(), _datesIntervals[i + 1].AddSeconds(-1).ToLocalTime());
+                _logger.DebugFormat("Times (Local): {0:G} - {1:G}", 
+                    _datesIntervals[i].LocalTime, 
+                    _datesIntervals[i + 1].LocalTime.AddSeconds(-1));
                
 
                 if (cancelToken.IsCancellationRequested)
@@ -90,8 +97,8 @@ namespace DataReader.Core
                 {
                     var newQuery = new DataQuery()
                     {
-                        StartTime = _datesIntervals[i],
-                        EndTime = _datesIntervals[i + 1].AddSeconds(-1), // we remove one second to avoid getting duplicate values at this same time each time
+                        StartTime = _datesIntervals[i].LocalTime,
+                        EndTime = _datesIntervals[i + 1].LocalTime.AddSeconds(-1), // we remove one second to avoid getting duplicate values at this same time each time
                         QueryId = _queryId++,
                         PiPoints = dataQuery.PiPoints,
                         ChunkId = i

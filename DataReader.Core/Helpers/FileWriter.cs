@@ -25,10 +25,6 @@ namespace DataReader.Core
 {
     public class FileWriter : IDisposable
     {
-        private static volatile int fileIndex=0;
-        private static object fileIndexLock=new object();
-        //private static DateTime BatchOperationTime;
-
         private readonly ILog _logger = LogManager.GetLogger(typeof(FileWriter));
         FileStream _fileStream;
         StreamWriter _streamWriter;
@@ -42,9 +38,6 @@ namespace DataReader.Core
 
         public FileWriter(int eventsPerFile, string writerIndex)
         {
-            //if(BatchOperationTime==DateTime.MinValue)
-            //    BatchOperationTime=DateTime.Now;
-
             _writerIndex = writerIndex;
             _eventsPerFile = eventsPerFile;
         }
@@ -62,7 +55,6 @@ namespace DataReader.Core
         {
             try
             {
-
                 if (_lineCount + 1 >= _eventsPerFile)
                 {
                     CreateNewFile(_fileName);
@@ -70,11 +62,9 @@ namespace DataReader.Core
 
                 _streamWriter.WriteLine(line);
                 _lineCount++;
-
             }
             catch (Exception ex)
             {
-
                 _logger.Error(ex);
             }
         }
@@ -83,47 +73,47 @@ namespace DataReader.Core
         {
             try
             {
-
-
                 Dispose();
 
-                lock (fileIndexLock)
+                // Simple filename: base with writer ID and line-based splitting
+                // If this is the first file for this base name, just use w{id}
+                // If we need to split due to line count, append a counter
+                var fullFileName = string.Format("{0}_w{1}.csv", fileName, _writerIndex);
+                
+                // Handle case where file already exists (multiple writes to same time range)
+                int splitCounter = 1;
+                while (File.Exists(fullFileName))
                 {
-                    fileIndex++;
+                    fullFileName = string.Format("{0}_w{1}_p{2}.csv", fileName, _writerIndex, splitCounter);
+                    splitCounter++;
                 }
-
-               // var time = (BatchOperationTime - new DateTime(1970, 1, 1)).TotalSeconds;
-                // i=file index(count), w=writer id(count), b=batch time when the command line was run
-                //  var fullFileName = string.Format("{0}_i{2}_w{3}_b{1}", fileName, time, fileIndex, _writerIndex);
-
-                var fullFileName = string.Format("{0}_i{1}_w{2}.csv", fileName, fileIndex, _writerIndex);
-
 
                 _fileStream = new FileStream(fullFileName, FileMode.CreateNew);
                 _streamWriter = new StreamWriter(_fileStream);
 
                 _lineCount = 0;
                 
-
                 _logger.InfoFormat("Created a new file: {0}.", fullFileName);
             }
             catch (Exception ex)
             {
-                
-             _logger.Error(ex);
+                _logger.Error(ex);
             }
-
-         
         }
-
 
         public void Dispose()
         {
             if (_streamWriter != null)
+            {
                 _streamWriter.Dispose();
+                _streamWriter = null;
+            }
 
             if (_fileStream != null)
+            {
                 _fileStream.Dispose();
+                _fileStream = null;
+            }
         }
     }
 }

@@ -112,8 +112,14 @@ namespace DataReader.Core
 
                             IDataFilter[] dataFilters=null;
 
-                            var fileName = _baseOutputFileName + "_" + writeInfo.ChunkId + "_" +
-                                           writeInfo.StartTime.ToLocalTime().ToIsoReadable() + "_to_" + writeInfo.EndTime.ToLocalTime().ToIsoReadable();
+                            // Create time-sortable filename: start with timestamp, then add identifiers for uniqueness
+                            // Format: {base}_{startTime}_{chunkId}_{subChunkId}[_summary]_w{writer}.csv
+                            // This ensures chronological sorting while maintaining uniqueness
+                            var fileName = string.Format("{0}_{1}_{2}_{3}",
+                                _baseOutputFileName,
+                                writeInfo.StartTime.ToIsoReadableUtc(),
+                                writeInfo.ChunkId,
+                                writeInfo.SubChunkId);
                             
                             if (writeInfo.IsSummaryData)
                             {
@@ -129,11 +135,12 @@ namespace DataReader.Core
                             if (writeInfo.IsSummaryData && writeInfo.Metadata != null)
                             {
                                 writer.WriteLine("# Summary Data Export");
+                                writer.WriteLine(string.Format("# Generated (UTC): {0}", DateTime.UtcNow.ToIso8601Utc()));
                                 foreach (var kvp in writeInfo.Metadata)
                                 {
                                     writer.WriteLine(string.Format("# {0}: {1}", kvp.Key, kvp.Value));
                                 }
-                                writer.WriteLine("# Timestamp" + _listSeparator + "Value" + _listSeparator + "TagName" + _listSeparator + "AggregateType");
+                                writer.WriteLine("# TimestampUTC" + _listSeparator + "Value" + _listSeparator + "TagName" + _listSeparator + "AggregateType");
                             }
 
                             var valueIndex = 0;
@@ -154,17 +161,18 @@ namespace DataReader.Core
                                             string aggregateType = writeInfo.SummaryTypes != null && writeInfo.SummaryTypes.ContainsKey(valueIndex) 
                                                 ? writeInfo.SummaryTypes[valueIndex] 
                                                 : "";
-                                            line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + tagName + _listSeparator + aggregateType;
+                                            // Use UTC ISO 8601 format for timestamps in CSV
+                                            line = afValue.Timestamp.UtcTime.ToIso8601Utc() + _listSeparator + afValue.Value + _listSeparator + tagName + _listSeparator + aggregateType;
                                         }
                                         else if (afValue.PIPoint != null)
                                         {
                                             tagName = afValue.PIPoint.Name;
-                                            line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + tagName;
+                                            line = afValue.Timestamp.UtcTime.ToIso8601Utc() + _listSeparator + afValue.Value + _listSeparator + tagName;
                                         }
                                         else
                                         {
                                             tagName = "Unknown";
-                                            line = afValue.Timestamp.LocalTime + _listSeparator + afValue.Value + _listSeparator + tagName;
+                                            line = afValue.Timestamp.UtcTime.ToIso8601Utc() + _listSeparator + afValue.Value + _listSeparator + tagName;
                                         }
                                         
                                         writer.WriteLine(line);

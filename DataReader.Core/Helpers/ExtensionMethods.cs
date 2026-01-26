@@ -33,6 +33,24 @@ namespace DataReader.Core
         }
 
         /// <summary>
+        /// Convert a DateTime to ISO 8601 format in UTC with Z suffix
+        /// Example: 2023-02-25T07:00:00Z
+        /// </summary>
+        public static string ToIso8601Utc(this DateTime dateTime)
+        {
+            return dateTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+        }
+
+        /// <summary>
+        /// Convert a DateTime to filename-safe ISO format in UTC
+        /// Example: 2023-02-25_07_00_00_UTC
+        /// </summary>
+        public static string ToIsoReadableUtc(this DateTime dateTime)
+        {
+            return dateTime.ToUniversalTime().ToString("yyyy-MM-dd_HH'_'mm'_'ss'_UTC'");
+        }
+
+        /// <summary>
         ///     Helper methods for the lists.
         /// </summary>
         public static List<List<T>> ChunkBy<T>(this List<T> source, int chunkSize)

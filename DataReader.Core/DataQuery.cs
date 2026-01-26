@@ -15,7 +15,6 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using OSIsoft.AF.Asset;
 using OSIsoft.AF.PI;
 
@@ -31,6 +30,8 @@ namespace DataReader.Core
             set { _piPoints = value; }
         }
 
+        // Use AFTime.UtcTime to store as DateTime for backwards compatibility
+        // But maintain timezone awareness through proper AFTime usage
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
 

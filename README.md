@@ -1,152 +1,176 @@
 # DataReader
+
 This command line application, written in C#, reads data from the OSIsoft PI Data Archive.  
 It was created to extract very large amounts of data in an efficient manner, using knowledge of the internals of the PI Data Archive and the Windows system to maximize throughput.
 
-The application supports two modes:
-- **Raw Data Mode**: Extract raw archived values from PI tags
-- **Summary/Aggregate Mode**: Extract calculated summaries (average, min, max, totals, etc.) over specified intervals
+The application supports two modes accessed via verbs:
+- **`raw`** (default): Extract raw archived values from PI tags
+- **`summary`**: Extract calculated summaries (average, min, max, totals, etc.) over specified intervals
+- **`test`**: Test tag search queries to verify which tags will be found
+
+# Documentation
+
+- **[User Guide](README.md)** - Command-line usage, examples, and options (this document)
+- **[Architecture Guide](ARCHITECTURE.md)** - Internal architecture, threading model, and developer documentation
 
 # Build
+
 Once compiled, it creates a **Build** folder in the solution folder. You can take this folder and place it on the system you would like to make the test on.
 
 # Prerequisites on host system
+
 * .NET Framework 4.5+
 * AFSDK 2.8+, for bulk calls support and also for the new *PIPointQuery.ParseQuery* method introduced in this version.
 
 # Getting Started
 
-## Initial Step - Test PI Point Query(ies)
+## Test Tag Queries First
 
-Before starting your data retrieval, it is best to check the tag filters you will be using to make sure you will have all the tags you need. The application will start reading the data faster if you provide several small queries instead of a big one (e.g. *).
+Before starting your data retrieval, test your tag filters to ensure you'll get all the tags you need. The application will start reading data faster if you provide several small queries instead of one large query (e.g. *).
 
-This command line will make 5 queries to get PI Tags. Queries need to be built on the [PIPointQuery syntax][1]. Each query needs to be separated by a space. Put your query in quotes if it contains spaces.
-
+### Test tag queries and see count
 ```bash
-datareader.exe --server PIServer01 --testTagSearch sinus* cdt* "tag:<>sin* DataType:Float" "PointSource:=#" "PointSource:=C"
+DataReader.exe test -s PIServer01 -q sinus* cdt* "tag:<>sin* DataType:Float"
 ```
 
-If you would like to see what are the tags that are included in your query, add the `--printTags` command:
-
+### Test queries and print all matching tag names
 ```bash
-datareader.exe --server PIServer01 --testTagSearch "tag:=Unit1* AND Location1:=1 AND PointSource:=OPC" --printTags
+DataReader.exe test -s PIServer01 -q "tag:=Unit1* AND Location1:=1 AND PointSource:=OPC" --printTags
 ```
 
-## Raw Data Examples
+## Raw Data Extraction Examples
+
+The `raw` verb (default) extracts archived data points exactly as stored in the PI Data Archive.
 
 ### Basic Raw Data Read (No Output)
-Read values for the last 30 days without writing to file (for testing):
+Read values for the last 30 days without writing to file (for performance testing):
+
+```bash
+DataReader.exe raw -s PIServer01 -t PointSource:=# --st *-30d --et * --estimatedEventsPerDay 15 --estimatedTagsCount 10000
+```
+
+Or omit the `raw` verb since it's the default:
 
 ```bash
 DataReader.exe -s PIServer01 -t PointSource:=# --st *-30d --et * --estimatedEventsPerDay 15 --estimatedTagsCount 10000
 ```
 
 ### Raw Data with File Output
-Read values for the last 30 days and output the result into CSV files:
+Read values for the last 30 days and output to CSV files:
 
 ```bash
-DataReader.exe -s PIServer01 -t PointSource:=# --st *-30d --et * --estimatedEventsPerDay 2 --estimatedTagsCount 6207 --enableWrite --outFileName "C:\temp\data"
+DataReader.exe raw -s PIServer01 -t PointSource:=# --st *-30d --et * --estimatedEventsPerDay 2 --estimatedTagsCount 6207 --enableWrite --outFileName "C:\temp\data"
+```
+
+### Using Tag File for Many Tags
+When you have many tags (to avoid command line length limits):
+
+**Create `tags.txt`:**
+```
+S4100_PLC_001!S4100_IIC0319_E_PV_HMI_R
+S4100_PLC_001!S4100_CBE003_M1_C_SP_HMI_R
+# Comments are supported with #
+4100-CJA-001-M1.courant_moyen
+```
+
+**Run the command:**
+```bash
+DataReader.exe raw -s PIServer01 --tagFile tags.txt --st *-30d --et * --enableWrite --outFileName "C:\temp\rawdata"
 ```
 
 ### Multiple Tag Queries
 Use multiple queries to optimize tag loading:
 
 ```bash
-DataReader.exe -s PIServer01 -t sinus* cdt* "PointSource:=OPC" --st *-7d --et * --enableWrite --outFileName "C:\temp\rawdata"
+DataReader.exe raw -s PIServer01 -t sinus* cdt* "PointSource:=OPC" --st *-7d --et * --enableWrite --outFileName "C:\temp\rawdata"
 ```
 
 ### Custom Time Range
 Read data for a specific date range:
 
 ```bash
-DataReader.exe -s PIServer01 -t "tag:=Reactor*" --st "2024-01-01" --et "2024-01-31" --enableWrite --outFileName "C:\temp\january_data"
+DataReader.exe raw -s PIServer01 -t "tag:=Reactor*" --st "2024-01-01" --et "2024-01-31" --enableWrite --outFileName "C:\temp\january_data"
 ```
 
 ### Filter Output Data
 Remove duplicates and filter out digital states:
 
 ```bash
-DataReader.exe -s PIServer01 -t * --st *-7d --et * --removeDuplicates --filterDigitalStates --enableWrite --outFileName "C:\temp\filtered_data"
+DataReader.exe raw -s PIServer01 -t * --st *-7d --et * --removeDuplicates --filterDigitalStates --enableWrite --outFileName "C:\temp\filtered_data"
 ```
 
-## Summary/Aggregate Data Examples
+## Summary/Aggregate Data Extraction Examples
+
+The `summary` verb extracts calculated aggregates over time intervals instead of raw data points.
+
+**Important Note on Time Handling for Summaries**: Time parameters (`--st` and `--et`) are treated as **local time** when querying the PI Data Archive for summaries. This is critical to ensure that daily/hourly intervals align correctly with calendar days and handle daylight saving time (DST) transitions properly:
+- A "daily" summary interval aligns with local midnight-to-midnight, not UTC midnight
+- During DST transitions, days can be 23, 24, or 25 hours, and the local time approach handles this correctly
+- Use local time expressions: `"2024-01-01"`, `"*-30d"`, `"*"`
+- Output data timestamps are in UTC (ISO 8601 format with 'Z' suffix) for consistency
+- Log files show both local and UTC times for debugging purposes
 
 ### Daily Averages, Min, and Max
 Extract daily summary statistics for the last 30 days:
 
 ```bash
-DataReader.exe -s PIServer01 -t "tag:=Reactor*" --st *-30d --et * --enableSummary --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\daily_summary"
-```
-
-### Using Tag File for Large Number of Tags
-When you have many tags and exceed the command line length limit, use a tag file:
-
-**Create a file `C:\temp\tags.txt`:**
-```
-S4100_PLC_001!S4100_IIC0319_E_PV_HMI_R
-S4100_PLC_001!S4100_CBE003_M1_C_SP_HMI_R
-S4100_PLC_001!S4100_II0121_A_DATA_HMI_ST.In
-# You can add comments with #
-4100-CJA-001-M1.courant_moyen
-S4100_PLC_001!S4100_LIT0319_DATA_HMI_ST.OUT
-```
-
-**Run the command:**
-```bash
-DataReader.exe -s PIServer01 --tagFile "C:\temp\tags.txt" --st "2026-01-01 07:00:00" --et "2026-01-01 23:59:59" --enableSummary --summaryTypes "All" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\summary"
-```
-
-You can also combine tag queries and tag file:
-```bash
-DataReader.exe -s PIServer01 -t "tag:=Reactor*" --tagFile "C:\temp\tags.txt" --st *-30d --et * --enableSummary --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\combined_summary"
+DataReader.exe summary -s PIServer01 -t "tag:=Reactor*" --st *-30d --et * --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\daily_summary"
 ```
 
 ### Hourly Totals for Flow Tags
 Calculate hourly totals with time-weighted calculation:
 
 ```bash
-DataReader.exe -s PIServer01 -t "tag:=Flow*" --st *-7d --et * --enableSummary --summaryTypes "Total" --summaryInterval "1h" --calculationBasis "TimeWeighted" --enableWrite --outFileName "C:\temp\hourly_totals"
+DataReader.exe summary -s PIServer01 -t "tag:=Flow*" --st *-7d --et * --summaryTypes "Total" --summaryInterval "1h" --calculationBasis "TimeWeighted" --enableWrite --outFileName "C:\temp\hourly_totals"
+```
+
+### Using Tag File for Summary Data
+When you have many tags and want summary data:
+
+```bash
+DataReader.exe summary -s PIServer01 --tagFile tags.txt --st "2024-01-01" --et "2024-01-31" --summaryTypes "All" --summaryInterval "1d" --timestampCalculation "MostRecentTime" --enableWrite --outFileName "C:\temp\complete_summary"
 ```
 
 ### 15-Minute Averages
 Extract 15-minute average values:
 
 ```bash
-DataReader.exe -s PIServer01 -t sinus* --st *-1d --et * --enableSummary --summaryTypes "Average" --summaryInterval "15m" --enableWrite --outFileName "C:\temp\15min_avg"
+DataReader.exe summary -s PIServer01 -t sinus* --st *-1d --et * --summaryTypes "Average" --summaryInterval "15m" --enableWrite --outFileName "C:\temp\15min_avg"
 ```
 
 ### All Available Summaries
 Calculate all available summary types for a day:
 
 ```bash
-DataReader.exe -s PIServer01 -t "PointSource:=OPC" --st *-1d --et * --enableSummary --summaryTypes "All" --summaryInterval "1d" --calculationBasis "TimeWeighted" --enableWrite --outFileName "C:\temp\complete_summary"
+DataReader.exe summary -s PIServer01 -t "PointSource:=OPC" --st *-1d --et * --summaryTypes "All" --summaryInterval "1d" --calculationBasis "TimeWeighted" --enableWrite --outFileName "C:\temp\complete_summary"
 ```
 
 ### Standard Deviation and Range
 Calculate daily standard deviation and range:
 
 ```bash
-DataReader.exe -s PIServer01 -t "tag:=Temperature*" --st *-30d --et * --enableSummary --summaryTypes "StdDev,Range,Average" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\stats"
+DataReader.exe summary -s PIServer01 -t "tag:=Temperature*" --st *-30d --et * --summaryTypes "StdDev,Range,Average" --summaryInterval "1d" --enableWrite --outFileName "C:\temp\stats"
 ```
 
 ### Event-Weighted Summaries
 Use event-weighted calculation for count-based data:
 
 ```bash
-DataReader.exe -s PIServer01 -t "tag:=Count*" --st *-7d --et * --enableSummary --summaryTypes "Average,Count" --summaryInterval "1d" --calculationBasis "EventWeighted" --enableWrite --outFileName "C:\temp\event_weighted"
+DataReader.exe summary -s PIServer01 -t "tag:=Count*" --st *-7d --et * --summaryTypes "Average,Count" --summaryInterval "1d" --calculationBasis "EventWeighted" --enableWrite --outFileName "C:\temp\event_weighted"
 ```
 
 ### Hourly Summaries with Custom Timestamps
 Extract hourly summaries with timestamps at the end of each interval:
 
 ```bash
-DataReader.exe -s PIServer01 -t * --st *-1d --et * --enableSummary --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1h" --timestampCalculation "MostRecentTime" --enableWrite --outFileName "C:\temp\hourly_end_time"
+DataReader.exe summary -s PIServer01 -t * --st *-1d --et * --summaryTypes "Average,Minimum,Maximum" --summaryInterval "1h" --timestampCalculation "MostRecentTime" --enableWrite --outFileName "C:\temp\hourly_end_time"
 ```
 
 ### Monthly Summaries
 Calculate monthly totals for long-term analysis:
 
 ```bash
-DataReader.exe -s PIServer01 -t "tag:=Production*" --st *-365d --et * --enableSummary --summaryTypes "Total,Average,Maximum" --summaryInterval "30d" --enableWrite --outFileName "C:\temp\monthly_production"
+DataReader.exe summary -s PIServer01 -t "tag:=Production*" --st *-365d --et * --summaryTypes "Total,Average,Maximum" --summaryInterval "30d" --enableWrite --outFileName "C:\temp\monthly_production"
 ```
 
 ## Connecting to PI Collective
@@ -155,12 +179,28 @@ DataReader.exe -s PIServer01 -t "tag:=Production*" --st *-365d --et * --enableSu
 Connect to a specific member of a PI Data Archive collective:
 
 ```bash
-DataReader.exe -s MyCollective MemberServer01 -t * --st *-1d --et * --enableWrite --outFileName "C:\temp\collective_data"
+DataReader.exe raw -s MyCollective MemberServer01 -t * --st *-1d --et * --enableWrite --outFileName "C:\temp\collective_data"
 ```
 
 # Usage
 
-## General Options
+## Command Structure
+
+```
+DataReader.exe <verb> [options]
+```
+
+Available verbs:
+- `raw` (default) - Extract raw archived data
+- `summary` - Extract aggregate/summary data
+- `test` - Test tag search queries
+
+Get help for a specific verb:
+```bash
+DataReader.exe <verb> --help
+```
+
+## Common Options (Available for `raw` and `summary` verbs)
 
 ```
 -s, --server               Required. PI Data Archive Server name to connect to.
@@ -179,111 +219,105 @@ DataReader.exe -s MyCollective MemberServer01 -t * --st *-1d --et * --enableWrit
                           as comments and ignored. Can be combined with 
                           --tagQueries option.
 
---testTagSearch           Makes a search with all passed filters and prints
-                          the results to the screen.
-                          e.g. sinus* SSN_NP60* "tag:<>sin* DataType:Float"
+--st                      (Default: *-1d) Start Time to query data.
+                          **IMPORTANT for summary queries**: Time values are
+                          treated as LOCAL time to ensure daily/hourly intervals
+                          align with calendar days and handle DST correctly.
+                          Use local time expressions like "2024-01-01" or "*-30d".
+                          For raw data queries, times are treated as specified.
 
---printTags               Print all tag names when doing the testTagSearch
+--et                      (Default: *) End Time to query data.
+                          **IMPORTANT for summary queries**: Time values are
+                          treated as LOCAL time to ensure daily/hourly intervals
+                          align with calendar days and handle DST correctly.
+                          Use local time expressions like "2024-01-31" or "*".
+                          For raw data queries, times are treated as specified.
 
---st                      (Default: *-1d) Start Time to query data
+--estimatedEventsPerDay   (Default: 4) Estimated number of events per tag per 
+                          day, to help optimize reading speed
 
---et                      (Default: *) End Time to query data
+--estimatedTagsCount      (Default: 10000) Estimated total number of tags to 
+                          read, to help optimize the application
+
+--enableWrite             (Default: false) Outputs the data into CSV files.
+                          If not specified, data is read but not output
+
+--outFileName             File name to output data. A datetime and .csv 
+                          extension will be appended. 
+                          Example: C:\temp\data
+
+--writersCount            (Default: 4) Number of file writers to run 
+                          simultaneously
+
+--eventsPerFile           (Default: 500000) Number of events to write per file
+
+--help                    Display help for the specific verb
+
+--version                 Display version information
 ```
 
-## Raw Data Options
+## Raw Data Specific Options
 
 ```
---estimatedEventsPerDay   (Default: 4) Provides an estimate of the number of
-                          events per tag per day, to help optimize reading speed
-
---estimatedTagsCount      (Default: 10000) Estimate of the total number of
-                          tags that will be read, to help optimize the application
-
---eventsPerRead           (Default: 10000) Defines how many events should be
-                          read per data call
+--eventsPerRead           (Default: 10000) Number of events to read per data call
 
 --removeDuplicates        Output values will not contain duplicated values
 
 --filterDigitalStates     Output values will not contain digital states
 ```
 
-## Summary/Aggregate Options
+## Summary Data Specific Options
 
 ```
---enableSummary           (Default: False) Extract aggregate/summary data 
-                          (average, min, max, etc.) instead of raw data
-
---summaryTypes            (Default: "Average,Minimum,Maximum") Summary types to 
+--summaryTypes            (Default: Average,Minimum,Maximum) Summary types to 
                           calculate. Options: Total, Average, Minimum, Maximum, 
                           Range, StdDev, PopulationStdDev, Count, PercentGood, 
                           TotalWithUOM, All, AllForNonNumeric
                           Use comma-separated values for multiple types
 
---summaryInterval         (Default: "1d") Interval duration for each summary 
+--summaryInterval         (Default: 1d) Interval duration for each summary 
                           calculation. Examples: '1d' (1 day), '1h' (1 hour), 
                           '30m' (30 minutes), '15s' (15 seconds)
                           Positive durations start from earliest time, 
                           negative from latest
 
---calculationBasis        (Default: "TimeWeighted") Method for evaluating data.
+--calculationBasis        (Default: TimeWeighted) Method for evaluating data.
                           Options: TimeWeighted, EventWeighted, 
                           TimeWeightedContinuous, TimeWeightedDiscrete,
                           EventWeightedExcludeMostRecentEvent,
                           EventWeightedExcludeEarliestEvent,
                           EventWeightedIncludeBothEnds
 
---timestampCalculation    (Default: "Auto") Timestamp to return for each summary.
+--timestampCalculation    (Default: Auto) Timestamp to return for each summary.
                           Options: Auto, EarliestTime, MostRecentTime
 ```
 
-## Output Options
+## Test Verb Options
 
 ```
---enableWrite             (Default: False) Outputs the data into text files.
-                          If not specified, data is read but not output
+-s, --server              Required. PI Data Archive Server name to connect to
 
---writersCount            (Default: 4) Defines the number of file writers
-                          that will run simultaneously
+-q, --queries             Required. Tag queries to test.
+                          e.g. sinus* "tag:<>sin* DataType:Float"
 
---outFileName             File name to output data. Works with the enableWrite
-                          option. A datetime and .csv extension will be appended
-                          to the name. Example: c:\temp\data
-
---eventsPerFile           (Default: 500000) Number of events to write per file
-
---help                    Display this help screen
+--printTags               Print all tag names found by the queries
 ```
-
-# Performance Notes
-
-## Raw Data Performance
-On a server with about 6000 tags, the following command gave very good read results:
-
-```bash
-DataReader.exe -s PIServer01 -t * --st T-30d --et T --estimatedEventsPerDay 4 --estimatedTagsCount 6207 --eventsPerRead 150000
-```
-
-## Summary Data Performance
-For summary calculations, performance is typically better than raw data extraction because:
-- Less data is transferred over the network
-- Calculations are performed server-side in the PI Data Archive
-- Parallel processing is used for multiple tags
-
-Tips for optimal summary performance:
-- Use appropriate `summaryInterval` values (larger intervals = less data)
-- Request only the summary types you need
-- Use `TimeWeighted` calculation basis for most continuous data
-- Use `EventWeighted` for discrete or count-based data
 
 # Output Format
 
+## Timestamp Handling
+
+**All timestamps in output files are in UTC using ISO 8601 format** (`YYYY-MM-DDTHH:MM:SSZ`) for unambiguous timezone handling and international compatibility.
+
+**Log files show both UTC and Local times** for easier debugging and correlation with local system times.
+
 ## Raw Data Output
-CSV files with format: `Timestamp,Value,TagName`
+CSV files with format: `TimestampUTC,Value,TagName`
 
 Example:
 ```
-2024-01-15 10:00:00,23.45,Reactor1_Temperature
-2024-01-15 10:05:00,23.67,Reactor1_Temperature
+2024-01-15T10:00:00Z,23.45,Reactor1_Temperature
+2024-01-15T10:05:00Z,23.67,Reactor1_Temperature
 ```
 
 ## Summary Data Output
@@ -292,22 +326,21 @@ CSV files with metadata header followed by summary values. Summary data includes
 Example:
 ```
 # Summary Data Export
+# Generated (UTC): 2024-01-20T14:30:00Z
 # SummaryTypes: Average, Minimum, Maximum
 # Interval: 1d
 # CalculationBasis: TimeWeighted
-# Timestamp,Value,TagName,AggregateType
-2024-01-15 00:00:00,23.45,Reactor1_Temperature,Average
-2024-01-15 00:00:00,20.12,Reactor1_Temperature,Minimum
-2024-01-15 00:00:00,26.78,Reactor1_Temperature,Maximum
-2024-01-16 00:00:00,24.12,Reactor1_Temperature,Average
-2024-01-16 00:00:00,21.34,Reactor1_Temperature,Minimum
-2024-01-16 00:00:00,27.45,Reactor1_Temperature,Maximum
+# TimestampUTC,Value,TagName,AggregateType
+2024-01-15T00:00:00Z,23.45,Reactor1_Temperature,Average
+2024-01-15T00:00:00Z,20.12,Reactor1_Temperature,Minimum
+2024-01-15T00:00:00Z,26.78,Reactor1_Temperature,Maximum
+2024-01-16T00:00:00Z,24.12,Reactor1_Temperature,Average
+2024-01-16T00:00:00Z,21.34,Reactor1_Temperature,Minimum
+2024-01-16T00:00:00Z,27.45,Reactor1_Temperature,Maximum
 ```
 
-# Additional Resources
+**Note:** File names also use UTC timestamps for consistency:
+- Example: `extract_1_2024-01-15_00_00_00_UTC_to_2024-01-16_23_59_59_UTC_summary_i1_w1.csv`
 
-For more information on PIPointQuery syntax, see:
-[PI AF SDK Documentation - PIPointQuery][1]
 
-[1]:https://techsupport.osisoft.com/Documentation/PI-AF-SDK/html/b8fbb6da-7a4b-4570-a09d-7f2b85ed204d.htm
 
