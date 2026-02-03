@@ -15,9 +15,6 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using OSIsoft.AF.Asset;
 
 namespace DataReader.Core
@@ -25,19 +22,23 @@ namespace DataReader.Core
     public class WriteInfo
     {
         public IEnumerable<AFValues> Data { get; set; }
-        
+
+        // Stable row model for summary exports
+        public IEnumerable<SummaryRecord> SummaryRecords { get; set; }
+
         public long ChunkId { get; set; }
 
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public long SubChunkId { get; set; }
-        
+
         public bool IsSummaryData { get; set; }
-        
+
         public Dictionary<string, string> Metadata { get; set; }
-        
+
+        // Legacy index-based mappings (kept for backward compatibility; not used when SummaryRecords is provided)
         public Dictionary<int, string> TagNames { get; set; }
-        
+
         public Dictionary<int, string> SummaryTypes { get; set; }
     }
 }

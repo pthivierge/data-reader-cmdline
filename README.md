@@ -107,7 +107,7 @@ The `summary` verb extracts calculated aggregates over time intervals instead of
 - A "daily" summary interval aligns with local midnight-to-midnight, not UTC midnight
 - During DST transitions, days can be 23, 24, or 25 hours, and the local time approach handles this correctly
 - Use local time expressions: `"2024-01-01"`, `"*-30d"`, `"*"`
-- Output data timestamps are in UTC (ISO 8601 format with 'Z' suffix) for consistency
+- **Output timestamps are in LOCAL TIME** (format: `YYYY-MM-DDTHH:MM:SS`) to match the query time zone
 - Log files show both local and UTC times for debugging purposes
 
 ### Daily Averages, Min, and Max
@@ -307,17 +307,17 @@ DataReader.exe <verb> --help
 
 ## Timestamp Handling
 
-**All timestamps in output files are in UTC using ISO 8601 format** (`YYYY-MM-DDTHH:MM:SSZ`) for unambiguous timezone handling and international compatibility.
+**All timestamps in output files are in LOCAL TIME** using the format `YYYY-MM-DDTHH:MM:SS±HH:MM` (ISO 8601 with timezone offset) to match the timezone of the query. This is particularly important for summary data where daily/hourly intervals must align with calendar days in the local timezone.
 
-**Log files show both UTC and Local times** for easier debugging and correlation with local system times.
+**Log files show both Local and UTC times** for easier debugging and correlation with UTC systems if needed.
 
 ## Raw Data Output
-CSV files with format: `TimestampUTC,Value,TagName`
+CSV files with format: `Timestamp,Value,TagName`
 
 Example:
 ```
-2024-01-15T10:00:00Z,23.45,Reactor1_Temperature
-2024-01-15T10:05:00Z,23.67,Reactor1_Temperature
+2024-01-15T10:00:00-05:00,23.45,Reactor1_Temperature
+2024-01-15T10:05:00-05:00,23.67,Reactor1_Temperature
 ```
 
 ## Summary Data Output
@@ -326,21 +326,21 @@ CSV files with metadata header followed by summary values. Summary data includes
 Example:
 ```
 # Summary Data Export
-# Generated (UTC): 2024-01-20T14:30:00Z
+# Generated (Local Time): 2024-01-20T14:30:00-05:00
 # SummaryTypes: Average, Minimum, Maximum
 # Interval: 1d
 # CalculationBasis: TimeWeighted
-# TimestampUTC,Value,TagName,AggregateType
-2024-01-15T00:00:00Z,23.45,Reactor1_Temperature,Average
-2024-01-15T00:00:00Z,20.12,Reactor1_Temperature,Minimum
-2024-01-15T00:00:00Z,26.78,Reactor1_Temperature,Maximum
-2024-01-16T00:00:00Z,24.12,Reactor1_Temperature,Average
-2024-01-16T00:00:00Z,21.34,Reactor1_Temperature,Minimum
-2024-01-16T00:00:00Z,27.45,Reactor1_Temperature,Maximum
+# Timestamp,Value,TagName,AggregateType
+2024-01-15T00:00:00-05:00,23.45,Reactor1_Temperature,Average
+2024-01-15T00:00:00-05:00,20.12,Reactor1_Temperature,Minimum
+2024-01-15T00:00:00-05:00,26.78,Reactor1_Temperature,Maximum
+2024-01-16T00:00:00-05:00,24.12,Reactor1_Temperature,Average
+2024-01-16T00:00:00-05:00,21.34,Reactor1_Temperature,Minimum
+2024-01-16T00:00:00-05:00,27.45,Reactor1_Temperature,Maximum
 ```
 
-**Note:** File names also use UTC timestamps for consistency:
-- Example: `extract_1_2024-01-15_00_00_00_UTC_to_2024-01-16_23_59_59_UTC_summary_i1_w1.csv`
+**Note:** File names use local timestamps for easy identification:
+- Example: `extract_1_2024-01-15_00-00-00_summary_i1_w1.csv`
 
 
 

@@ -171,19 +171,35 @@ namespace DataReader.CommandLine
                 TimeSpan intervalTimeSpan = summaryInterval.ToTimeSpan();
                 int summaryTypesCount = CountSummaryTypes(options.SummaryTypes);
                 
-                double intervalsPerRequest = 10000.0 / (options.TagsCount * summaryTypesCount);
-                intervalsPerRequest = Math.Max(1, intervalsPerRequest);
+                // If tagFile is provided, count actual tags from file instead of using estimate
+                int actualOrEstimatedTagCount = options.TagsCount;
+                if (!string.IsNullOrEmpty(options.TagFile) && File.Exists(options.TagFile))
+                {
+                    actualOrEstimatedTagCount = File.ReadAllLines(options.TagFile)
+                        .Count(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("#"));
+                    _logger.InfoFormat("Counted {0} tags from file (ignoring estimatedTagsCount parameter)", actualOrEstimatedTagCount);
+                }
                 
+                // Target 30000 events per request for optimal batching
+                // IMPORTANT: this must be an *integer* number of summary intervals per request.
+                // If we use a fractional number of intervals (via seconds math), Orchestrator boundaries drift
+                // (e.g., 19:00 becomes 22:46), which creates partial summary intervals.
+                double intervalsPerRequestRaw = 30000.0 / (actualOrEstimatedTagCount * summaryTypesCount);
+                var intervalsPerRequest = Math.Max(1, (int)Math.Floor(intervalsPerRequestRaw));
+
                 double requestSeconds = Math.Abs(intervalTimeSpan.TotalSeconds) * intervalsPerRequest;
                 readerSettings.TimeIntervalPerDataRequest = TimeSpan.FromSeconds(requestSeconds);
-                
-                _logger.InfoFormat("Summary mode: {0} summary types, interval={1}, calculated TimeIntervalPerDataRequest={2:F2} days", 
-                    summaryTypesCount, summaryInterval, readerSettings.TimeIntervalPerDataRequest.TotalDays);
+
+                _logger.InfoFormat(
+                    "Summary mode: {0} summary types, interval={1}, tags={2}, TimeIntervalPerDataRequest={3:F2} days ({4} intervals; raw={5:F2})",
+                    summaryTypesCount, summaryInterval, actualOrEstimatedTagCount,
+                    readerSettings.TimeIntervalPerDataRequest.TotalDays, intervalsPerRequest, intervalsPerRequestRaw);
 
                 _logger.Info("Creating worker objects for SUMMARY data extraction...");
                 var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount, null);
                 
                 // Pass intervalsPerBatch (0 means auto-calculate, >0 means use custom value)
+                // Also pass tagsChunkSize for parallel tag chunking
                 var dataReader = new DataReaderSummary(
                     readerSettings,
                     dataWriter,
@@ -192,9 +208,10 @@ namespace DataReader.CommandLine
                     options.SummaryInterval,
                     options.CalculationBasis,
                     options.TimestampCalculation,
-                    options.IntervalsPerBatch > 0 ? (int?)options.IntervalsPerBatch : null);
+                    options.IntervalsPerBatch > 0 ? (int?)options.IntervalsPerBatch : null,
+                    options.TagsChunkSize);
 
-                ExecuteDataExtraction(options, piConnection, readerSettings, dataReader, dataWriter, _logger);
+                ExecuteDataExtraction(options, piConnection, readerSettings, dataReader, dataWriter, _logger, summaryInterval, summaryTypesCount);
 
                 Environment.Exit(0);
             }
@@ -217,8 +234,10 @@ namespace DataReader.CommandLine
             return piConnection;
         }
 
-        private static void ExecuteDataExtraction(CommonOptions options, PIConnection piConnection, DataReaderSettings readerSettings, IDataReader dataReader, DataWriter dataWriter, ILog _logger)
+        private static void ExecuteDataExtraction(CommonOptions options, PIConnection piConnection, DataReaderSettings readerSettings, IDataReader dataReader, DataWriter dataWriter, ILog _logger, AFTimeSpan? summaryInterval = null, int summaryTypesCount = 0)
         {
+            // TimeIntervalPerDataRequest has already been calculated with actual tag count from file
+            // No need to recalculate here
             var orchestrator = new Orchestrator(options.StartTime, options.EndTime,
                 readerSettings.TimeIntervalPerDataRequest, dataReader);
 

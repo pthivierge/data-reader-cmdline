@@ -109,6 +109,9 @@ namespace DataReader.CommandLine
         [Option("intervalsPerBatch", Default = 0, HelpText = "Number of summary intervals to process per batch. If 0 (default), automatically calculated to target ~10,000 events per batch. For 233 tags with 10 summary types and 1-day intervals, use 2-4 intervals. Higher values = larger batches = fewer API calls but more memory.")]
         public int IntervalsPerBatch { get; set; }
 
+        [Option("tagsChunkSize", Default = 50, HelpText = "Number of tags to process per parallel chunk. Tags are split into chunks of this size and processed in parallel (max 4 threads) within each time batch. Default: 50.")]
+        public int TagsChunkSize { get; set; }
+
         [Usage(ApplicationAlias = "DataReader.exe")]
         public static IEnumerable<Example> Examples
         {

@@ -31,6 +31,12 @@ namespace DataReader.Core
     /// </summary>
     public class DataWriter : TaskBase
     {
+        private class ValueWithIndex
+        {
+            public AFValue Value { get; set; }
+            public int Index { get; set; }
+        }
+
         private string _baseOutputFileName = null;
         FiltersFactory _filtersFactory;
 
@@ -38,7 +44,20 @@ namespace DataReader.Core
         private readonly string _decimalSeparator;
         private readonly string _listSeparator;
 
-
+        /// <summary>
+        /// Escapes and quotes a CSV field according to RFC 4180
+        /// </summary>
+        private static string QuoteCsvField(string field)
+        {
+            if (field == null)
+                return "\"\"";
+            
+            // Escape double quotes by doubling them
+            string escaped = field.Replace("\"", "\"\"");
+            
+            // Wrap in double quotes
+            return "\"" + escaped + "\"";
+        }
 
         public readonly BlockingCollection<WriteInfo> DataQueue =
             new BlockingCollection<WriteInfo>();
@@ -117,7 +136,7 @@ namespace DataReader.Core
                             // This ensures chronological sorting while maintaining uniqueness
                             var fileName = string.Format("{0}_{1}_{2}_{3}",
                                 _baseOutputFileName,
-                                writeInfo.StartTime.ToIsoReadableUtc(),
+                                writeInfo.StartTime.ToString("yyyy-MM-dd_HH-mm-ss"),
                                 writeInfo.ChunkId,
                                 writeInfo.SubChunkId);
                             
@@ -135,49 +154,96 @@ namespace DataReader.Core
                             if (writeInfo.IsSummaryData && writeInfo.Metadata != null)
                             {
                                 writer.WriteLine("# Summary Data Export");
-                                writer.WriteLine(string.Format("# Generated (UTC): {0}", DateTime.UtcNow.ToIso8601Utc()));
+                                writer.WriteLine(string.Format("# Generated (Local Time): {0}", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz")));
                                 foreach (var kvp in writeInfo.Metadata)
                                 {
                                     writer.WriteLine(string.Format("# {0}: {1}", kvp.Key, kvp.Value));
                                 }
-                                writer.WriteLine("# TimestampUTC" + _listSeparator + "Value" + _listSeparator + "TagName" + _listSeparator + "AggregateType");
+                                writer.WriteLine(QuoteCsvField("Timestamp") + _listSeparator + QuoteCsvField("Value") + _listSeparator + QuoteCsvField("TagName") + _listSeparator + QuoteCsvField("AggregateType"));
                             }
 
+                            // Summary export: use stable row DTOs when provided
+                            if (writeInfo.IsSummaryData && writeInfo.SummaryRecords != null)
+                            {
+                                var rows = writeInfo.SummaryRecords.ToList();
+
+                                rows.Sort((a, b) =>
+                                {
+                                    int cmp = a.TimestampLocal.CompareTo(b.TimestampLocal);
+                                    if (cmp != 0) return cmp;
+                                    cmp = string.CompareOrdinal(a.TagName ?? string.Empty, b.TagName ?? string.Empty);
+                                    if (cmp != 0) return cmp;
+                                    return string.CompareOrdinal(a.AggregateType ?? string.Empty, b.AggregateType ?? string.Empty);
+                                });
+
+                                foreach (var r in rows)
+                                {
+                                    var line = QuoteCsvField(r.TimestampLocal.ToString("yyyy-MM-ddTHH:mm:sszzz")) + _listSeparator +
+                                               QuoteCsvField(r.ValueString ?? string.Empty) + _listSeparator +
+                                               QuoteCsvField(r.TagName ?? "Unknown") + _listSeparator +
+                                               QuoteCsvField(r.AggregateType ?? string.Empty);
+                                    writer.WriteLine(line);
+                                }
+
+                                return;
+                            }
+
+                            // Collect all values with their metadata for sorting (raw export + legacy summary export)
+                            var valuesToWrite = new List<ValueWithIndex>();
                             var valueIndex = 0;
                             foreach (var afValues in writeInfo.Data)
                             {
                                 foreach (var afValue in afValues)
                                 {
-                                    var isFiltered = CheckFilters(afValue, dataFilters);
-                                    
-                                    if (!isFiltered)
-                                    {
-                                        string tagName;
-                                        string line;
-                                        
-                                        if (writeInfo.IsSummaryData && writeInfo.TagNames != null && writeInfo.TagNames.ContainsKey(valueIndex))
-                                        {
-                                            tagName = writeInfo.TagNames[valueIndex];
-                                            string aggregateType = writeInfo.SummaryTypes != null && writeInfo.SummaryTypes.ContainsKey(valueIndex) 
-                                                ? writeInfo.SummaryTypes[valueIndex] 
-                                                : "";
-                                            // Use UTC ISO 8601 format for timestamps in CSV
-                                            line = afValue.Timestamp.UtcTime.ToIso8601Utc() + _listSeparator + afValue.Value + _listSeparator + tagName + _listSeparator + aggregateType;
-                                        }
-                                        else if (afValue.PIPoint != null)
-                                        {
-                                            tagName = afValue.PIPoint.Name;
-                                            line = afValue.Timestamp.UtcTime.ToIso8601Utc() + _listSeparator + afValue.Value + _listSeparator + tagName;
-                                        }
-                                        else
-                                        {
-                                            tagName = "Unknown";
-                                            line = afValue.Timestamp.UtcTime.ToIso8601Utc() + _listSeparator + afValue.Value + _listSeparator + tagName;
-                                        }
-                                        
-                                        writer.WriteLine(line);
-                                    }
+                                    valuesToWrite.Add(new ValueWithIndex { Value = afValue, Index = valueIndex });
                                     valueIndex++;
+                                }
+                            }
+
+                            // Sort by timestamp ascending
+                            valuesToWrite.Sort((a, b) => a.Value.Timestamp.CompareTo(b.Value.Timestamp));
+
+                            // Write sorted values
+                            foreach (var item in valuesToWrite)
+                            {
+                                var afValue = item.Value;
+                                var index = item.Index;
+
+                                var isFiltered = CheckFilters(afValue, dataFilters);
+
+                                if (!isFiltered)
+                                {
+                                    string tagName;
+                                    string line;
+
+                                    if (writeInfo.IsSummaryData && writeInfo.TagNames != null && writeInfo.TagNames.ContainsKey(index))
+                                    {
+                                        tagName = writeInfo.TagNames[index];
+                                        string aggregateType = writeInfo.SummaryTypes != null && writeInfo.SummaryTypes.ContainsKey(index)
+                                            ? writeInfo.SummaryTypes[index]
+                                            : "";
+                                        // Use Local time format with timezone offset for timestamps in CSV
+                                        line = QuoteCsvField(afValue.Timestamp.LocalTime.ToString("yyyy-MM-ddTHH:mm:sszzz")) + _listSeparator +
+                                               QuoteCsvField(afValue.Value != null ? afValue.Value.ToString() : "") + _listSeparator +
+                                               QuoteCsvField(tagName) + _listSeparator +
+                                               QuoteCsvField(aggregateType);
+                                    }
+                                    else if (afValue.PIPoint != null)
+                                    {
+                                        tagName = afValue.PIPoint.Name;
+                                        line = QuoteCsvField(afValue.Timestamp.LocalTime.ToString("yyyy-MM-ddTHH:mm:sszzz")) + _listSeparator +
+                                               QuoteCsvField(afValue.Value != null ? afValue.Value.ToString() : "") + _listSeparator +
+                                               QuoteCsvField(tagName);
+                                    }
+                                    else
+                                    {
+                                        tagName = "Unknown";
+                                        line = QuoteCsvField(afValue.Timestamp.LocalTime.ToString("yyyy-MM-ddTHH:mm:sszzz")) + _listSeparator +
+                                               QuoteCsvField(afValue.Value != null ? afValue.Value.ToString() : "") + _listSeparator +
+                                               QuoteCsvField(tagName);
+                                    }
+
+                                    writer.WriteLine(line);
                                 }
                             }
 

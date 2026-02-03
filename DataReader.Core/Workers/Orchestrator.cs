@@ -60,12 +60,19 @@ namespace DataReader.Core
         {
             _logger.Info("Orchestrator started and ready to receive tags to send data queries to the DataReader");
 
+            // For summary reads, we want contiguous, boundary-aligned ranges (no -1 second).
+            // PIPointList.Summaries produces N intervals when (end-start) is exactly N*summaryInterval,
+            // so using exact boundaries avoids partial/shifted intervals.
+            bool isSummaryReader = _dataReader is DataReaderSummary;
+
             // process the first intervall
             foreach (var dataQuery in IncomingPiPoints.GetConsumingEnumerable(cancelToken))
             {
                 // Use LocalTime for DateTime to ensure daily intervals align with calendar days (important for summary queries)
                 dataQuery.StartTime = _datesIntervals[0].LocalTime;
-                dataQuery.EndTime = _datesIntervals[1].LocalTime.AddSeconds(-1);
+                dataQuery.EndTime = isSummaryReader
+                    ? _datesIntervals[1].LocalTime
+                    : _datesIntervals[1].LocalTime.AddSeconds(-1);
                 dataQuery.QueryId = _queryId++;
                 dataQuery.ChunkId = 1;
                 // keep the taglist for the next time period query
@@ -85,9 +92,13 @@ namespace DataReader.Core
             for (var i = 1; i < _datesIntervals.Count - 1; i++)
             {
 
-                _logger.DebugFormat("Times (Local): {0:G} - {1:G}", 
-                    _datesIntervals[i].LocalTime, 
-                    _datesIntervals[i + 1].LocalTime.AddSeconds(-1));
+                var intervalEndLocal = isSummaryReader
+                    ? _datesIntervals[i + 1].LocalTime
+                    : _datesIntervals[i + 1].LocalTime.AddSeconds(-1);
+
+                _logger.DebugFormat("Times (Local): {0:G} - {1:G}",
+                    _datesIntervals[i].LocalTime,
+                    intervalEndLocal);
                
 
                 if (cancelToken.IsCancellationRequested)
@@ -98,7 +109,11 @@ namespace DataReader.Core
                     var newQuery = new DataQuery()
                     {
                         StartTime = _datesIntervals[i].LocalTime,
-                        EndTime = _datesIntervals[i + 1].LocalTime.AddSeconds(-1), // we remove one second to avoid getting duplicate values at this same time each time
+                        // For non-summary reads, we remove one second to avoid duplicates at boundaries.
+                        // For summaries, keep exact boundaries to avoid partial intervals.
+                        EndTime = isSummaryReader
+                            ? _datesIntervals[i + 1].LocalTime
+                            : _datesIntervals[i + 1].LocalTime.AddSeconds(-1),
                         QueryId = _queryId++,
                         PiPoints = dataQuery.PiPoints,
                         ChunkId = i

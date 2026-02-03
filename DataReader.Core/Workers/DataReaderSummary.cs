@@ -43,6 +43,8 @@ namespace DataReader.Core
         private AFTimestampCalculation _timestampCalculation;
         private int _targetEventsPerRequest;
         private int? _customIntervalsPerBatch;
+        private int _tagsChunkSize;
+        private const int _maxDegreeOfParallelism = 4;
 
         public DataReaderSummary(
             DataReaderSettings dataReaderSettings, 
@@ -52,7 +54,8 @@ namespace DataReader.Core
             string summaryInterval,
             string calculationBasis,
             string timestampCalculation,
-            int? intervalsPerBatch = null)
+            int? intervalsPerBatch = null,
+            int tagsChunkSize = 50)
          {
              _dataReaderSettings = dataReaderSettings;
              _dataWriter = dataWriter;
@@ -63,34 +66,40 @@ namespace DataReader.Core
              _calculationBasis = ParseCalculationBasis(calculationBasis);
              _timestampCalculation = ParseTimestampCalculation(timestampCalculation);
              _customIntervalsPerBatch = intervalsPerBatch;
+             _tagsChunkSize = tagsChunkSize;
              
+             // Increased from 10000 to 30000 to fetch ~3x more data per API call
+             // This reduces the number of round-trips to PI Data Archive
+             // For 233 tags × 10 summary types: 4 intervals ? 12 intervals per batch
              _targetEventsPerRequest = 10000;
              
-             _logger.InfoFormat("DataReaderSummary initialized - SummaryTypes: {0}, Interval: {1}, Basis: {2}, Timestamp: {3}, CustomIntervalsPerBatch: {4}",
+             _logger.InfoFormat("DataReaderSummary initialized - SummaryTypes: {0}, Interval: {1}, Basis: {2}, Timestamp: {3}, CustomIntervalsPerBatch: {4}, TagsChunkSize: {5}, MaxParallelThreads: {6}",
                  _summaryTypes, _summaryInterval, _calculationBasis, _timestampCalculation, 
-                 _customIntervalsPerBatch.HasValue ? _customIntervalsPerBatch.Value.ToString() : "Auto");
+                 _customIntervalsPerBatch.HasValue ? _customIntervalsPerBatch.Value.ToString() : "Auto",
+                 _tagsChunkSize, _maxDegreeOfParallelism);
          }
 
         /// <summary>
-        /// Retrieves summary data using PIPointList.Summaries with optimized batching
-        /// PIPointList.Summaries handles internal parallelism, so we process batches sequentially
-        /// Batching is calculated as: (10000 target events) / (number of summary types * total tags)
+        /// Retrieves summary data using PIPointList.Summaries with parallel tag chunking
+        /// Tags are split into chunks (default 50) and processed in parallel (max 4 threads) within each time batch
+        /// Time batches are processed sequentially to maintain order
         /// All time ranges are in local time to ensure daily intervals align with calendar days and handle DST correctly.
         /// </summary>
         private void GetSummariesBulkSequential(DataQuery query, AFTimeRange timeRange, CancellationToken cancelToken)
         {
             // timeRange parameter is always in Local time (created from Local DateTimes in DoTask)
             // This ensures daily summaries align with calendar days and handle DST transitions correctly
-            _logger.WarnFormat("QUERY (SUMMARY-BULK) # {0} - TAGS: {1} - PERIOD Local: {2} to {3} | UTC: {4} to {5} - SEQUENTIAL MODE",
+            _logger.WarnFormat("QUERY (SUMMARY-BULK) # {0} - TAGS: {1} - PERIOD Local: {2} to {3} | UTC: {4} to {5} - PARALLEL TAG CHUNKING MODE ({6} tags per chunk, max {7} threads)",
                 query.QueryId, query.PiPoints.Count,
                 timeRange.StartTime.LocalTime, timeRange.EndTime.LocalTime,
-                timeRange.StartTime.UtcTime.ToIso8601Utc(), timeRange.EndTime.UtcTime.ToIso8601Utc());
+                timeRange.StartTime.UtcTime.ToIso8601Utc(), timeRange.EndTime.UtcTime.ToIso8601Utc(),
+                _tagsChunkSize, _maxDegreeOfParallelism);
 
-            // Calculate batching based on ALL tags, not per chunk
+            // Calculate batching based on chunk size (not all tags)
             int summaryTypesCount = CountSummaryTypes(_summaryTypes);
             int totalTags = query.PiPoints.Count;
             
-            // Use custom intervalsPerBatch if provided, otherwise calculate automatically
+            // Use custom intervalsPerBatch if provided, otherwise calculate based on chunk size
             int intervalsPerBatch;
             if (_customIntervalsPerBatch.HasValue && _customIntervalsPerBatch.Value > 0)
             {
@@ -99,22 +108,26 @@ namespace DataReader.Core
             }
             else
             {
-                // Target 10,000 events per call: 10000 / (summaryTypes * totalTags)
-                intervalsPerBatch = CalculateIntervalsPerBatch(summaryTypesCount, totalTags);
+                // Target 10,000 events per call based on chunk size: 10000 / (summaryTypes * chunkSize)
+                intervalsPerBatch = CalculateIntervalsPerBatch(summaryTypesCount, _tagsChunkSize);
             }
             
-            _logger.InfoFormat("Batch calculation: {0} tags × {1} summary types × {2} intervals = ~{3} events per batch",
-                totalTags, summaryTypesCount, intervalsPerBatch, totalTags * summaryTypesCount * intervalsPerBatch);
+            _logger.InfoFormat("Batch calculation: {0} tags in chunks of {1} × {2} summary types × {3} intervals = ~{4} events per chunk per batch",
+                totalTags, _tagsChunkSize, summaryTypesCount, intervalsPerBatch, _tagsChunkSize * summaryTypesCount * intervalsPerBatch);
 
             var batchTimeRanges = SplitTimeRangeByIntervals(timeRange, _summaryInterval, intervalsPerBatch);
             
-            _logger.InfoFormat("Split time range into {0} batches for sequential processing", batchTimeRanges.Count);
+            _logger.InfoFormat("Split time range into {0} time batches, each batch will process tags in parallel chunks", batchTimeRanges.Count);
 
-            // Process all tags together in sequential batches
-            // PIPointList.Summaries() handles internal parallelism efficiently
-            var pointList = new PIPointList(query.PiPoints);
+            // Split tags into chunks for parallel processing
+            var tagChunks = query.PiPoints.ToList().ChunkBy(_tagsChunkSize);
+            int totalChunks = tagChunks.Count();
+            
+            _logger.InfoFormat("Split {0} tags into {1} chunks of up to {2} tags each", totalTags, totalChunks, _tagsChunkSize);
+
             int batchIndex = 0;
 
+            // Process time batches sequentially
             foreach (var batchTimeRange in batchTimeRanges)
             {
                 if (cancelToken.IsCancellationRequested)
@@ -123,95 +136,130 @@ namespace DataReader.Core
                     break;
                 }
 
-                var stats = new StatisticsInfo();
-                stats.Stopwatch.Start();
+                var batchStats = new StatisticsInfo();
+                batchStats.Stopwatch.Start();
 
-                PIPagingConfiguration pagingConfig = new PIPagingConfiguration(PIPageType.TagCount, 1000);
+                _logger.DebugFormat("Time Batch {0}: Processing {1} tag chunks in parallel | Local: {2} to {3} | UTC: {4} to {5}", 
+                    batchIndex, totalChunks,
+                    batchTimeRange.StartTime.LocalTime, batchTimeRange.EndTime.LocalTime,
+                    batchTimeRange.StartTime.UtcTime.ToIso8601Utc(), batchTimeRange.EndTime.UtcTime.ToIso8601Utc());
 
-                try
-                {
-                    _logger.DebugFormat("Batch {0}: Processing {1} tags | Local: {2} to {3} | UTC: {4} to {5}", 
-                        batchIndex, totalTags, 
-                        batchTimeRange.StartTime.LocalTime, batchTimeRange.EndTime.LocalTime,
-                        batchTimeRange.StartTime.UtcTime.ToIso8601Utc(), batchTimeRange.EndTime.UtcTime.ToIso8601Utc());
+                // Thread-safe collections for aggregating results from parallel chunks
+                var batchSummaryData = new ConcurrentBag<AFValues>();
+                var summaryRecords = new ConcurrentBag<SummaryRecord>();
+                var chunkExceptions = new ConcurrentBag<Exception>();
 
-                    var bulkResults = pointList.Summaries(
-                        batchTimeRange,
-                        _summaryInterval,
-                        _summaryTypes,
-                        _calculationBasis,
-                        _timestampCalculation,
-                        pagingConfig);
-
-                    var batchSummaryData = new List<AFValues>();
-                    var summaryTypeMap = new Dictionary<int, string>();
-                    var tagNameMap = new Dictionary<int, string>();
-                    var valueIndex = 0;
-
-                    foreach (var pointResult in bulkResults)
+                // Process tag chunks in parallel (max 4 threads)
+                Parallel.ForEach(tagChunks, 
+                    new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancelToken },
+                    (tagChunk, state, chunkIndex) =>
                     {
-                        foreach (var kvp in pointResult)
+                        try
                         {
-                            var summaryType = kvp.Key;
-                            var values = kvp.Value;
-                            
-                            if (values != null && values.Count > 0)
+                            var chunkPointList = new PIPointList(tagChunk);
+                            PIPagingConfiguration pagingConfig = new PIPagingConfiguration(PIPageType.TagCount, 1000);
+
+                            _logger.DebugFormat("Time Batch {0}, Tag Chunk {1}: Processing {2} tags", 
+                                batchIndex, chunkIndex, tagChunk.Count);
+
+                            var bulkResults = chunkPointList.Summaries(
+                                batchTimeRange,
+                                _summaryInterval,
+                                _summaryTypes,
+                                _calculationBasis,
+                                _timestampCalculation,
+                                pagingConfig);
+
+                            int chunkEventCount = 0;
+
+                            foreach (var pointResult in bulkResults)
                             {
-                                var piPoint = values.PIPoint;
-                                var tagName = piPoint != null ? piPoint.Name : "Unknown";
-                                
-                                var summaryValues = new AFValues();
-                                foreach (var val in values)
+                                foreach (var summaryTypesResultsDictionary in pointResult)
                                 {
-                                    summaryTypeMap[valueIndex] = summaryType.ToString();
-                                    tagNameMap[valueIndex] = tagName;
-                                    summaryValues.Add(val);
-                                    valueIndex++;
+                                    var summaryType = summaryTypesResultsDictionary.Key;
+                                    var values = summaryTypesResultsDictionary.Value;
+
+                                    if (values != null && values.Count > 0)
+                                    {
+                                        var piPoint = values.PIPoint;
+                                        var tagName = piPoint != null ? piPoint.Name : "Unknown";
+                                        var summaryTypeName = GetSummaryTypeName(summaryType);
+
+                                        var summaryValues = new AFValues();
+                                        foreach (var val in values)
+                                        {
+                                            summaryValues.Add(val);
+                                            chunkEventCount++;
+
+                                            summaryRecords.Add(new SummaryRecord
+                                            {
+                                                TimestampLocal = val.Timestamp.LocalTime,
+                                                TagName = tagName,
+                                                AggregateType = summaryTypeName,
+                                                ValueString = val.Value != null ? val.Value.ToString() : "",
+                                                SourceValue = val
+                                            });
+                                        }
+
+                                        batchSummaryData.Add(summaryValues);
+                                    }
                                 }
-                                batchSummaryData.Add(summaryValues);
                             }
+
+                            _logger.DebugFormat("Time Batch {0}, Tag Chunk {1}: Completed - {2} events retrieved", 
+                                batchIndex, chunkIndex, chunkEventCount);
                         }
-                    }
-
-                    // Send each batch immediately to the write queue
-                    if (_enableWrite && batchSummaryData.Count > 0 && !cancelToken.IsCancellationRequested)
-                    {
-                        var writeInfo = new WriteInfo()
+                        catch (Exception ex)
                         {
-                            Data = batchSummaryData,
-                            StartTime = batchTimeRange.StartTime.UtcTime,
-                            EndTime = batchTimeRange.EndTime.UtcTime,
-                            ChunkId = query.ChunkId,
-                            SubChunkId = batchIndex,
-                            IsSummaryData = true,
-                            Metadata = new Dictionary<string, string>()
-                            {
-                                { "OriginalStart", timeRange.StartTime.UtcTime.ToIso8601Utc() },
-                                { "OriginalEnd", timeRange.EndTime.UtcTime.ToIso8601Utc() },
-                                { "SummaryInterval", _summaryInterval.ToString() },
-                                { "SummaryTypes", _summaryTypes.ToString() },
-                                { "CalculationBasis", _calculationBasis.ToString() },
-                                { "TimestampCalculation", _timestampCalculation.ToString() }
-                            }
-                        };
+                            _logger.ErrorFormat("Error processing Time Batch {0}, Tag Chunk {1} - {2}", 
+                                batchIndex, chunkIndex, ex.Message);
+                            chunkExceptions.Add(ex);
+                        }
+                    });
 
-                        // Enqueue the write operation
-                        _dataWriter.DataQueue.Add(writeInfo, cancelToken);
-                        _logger.DebugFormat("Batch {0}: Enqueued {1} summary events for writing", 
-                            batchIndex, batchSummaryData.Sum(b => b.Count));
-                    }
-                }
-                catch (Exception ex)
+                // Check if any chunks had errors
+                if (chunkExceptions.Count > 0)
                 {
-                    _logger.ErrorFormat("Error processing summary batch {0} - {1}", batchIndex, ex.Message);
+                    _logger.WarnFormat("Time Batch {0}: {1} chunk(s) encountered errors", batchIndex, chunkExceptions.Count);
                 }
-                finally
+
+                // Send the aggregated batch data to the write queue
+                if (_enableWrite && batchSummaryData.Count > 0 && !cancelToken.IsCancellationRequested)
                 {
-                    stats.Stopwatch.Stop();
-                    _logger.InfoFormat("SUMMARY-BULK Batch {0} processed - Duration: {1} ms",
-                        batchIndex, stats.Stopwatch.ElapsedMilliseconds);
-                    batchIndex++;
+                    var writeInfo = new WriteInfo()
+                    {
+                        Data = batchSummaryData.ToList(),
+                        SummaryRecords = summaryRecords.ToList(),
+                        StartTime = batchTimeRange.StartTime.LocalTime,
+                        EndTime = batchTimeRange.EndTime.LocalTime,
+                        ChunkId = query.ChunkId,
+                        SubChunkId = batchIndex,
+                        IsSummaryData = true,
+                        Metadata = new Dictionary<string, string>()
+                        {
+                            { "OriginalStart", timeRange.StartTime.LocalTime.ToString("yyyy-MM-ddTHH:mm:ss") },
+                            { "OriginalEnd", timeRange.EndTime.LocalTime.ToString("yyyy-MM-ddTHH:mm:ss") },
+                            { "SummaryInterval", _summaryInterval.ToString() },
+                            { "SummaryTypes", _summaryTypes.ToString() },
+                            { "CalculationBasis", _calculationBasis.ToString() },
+                            { "TimestampCalculation", _timestampCalculation.ToString() }
+                        }
+                    };
+
+                    _dataWriter.DataQueue.Add(writeInfo, cancelToken);
+                    _logger.DebugFormat("Time Batch {0}: Enqueued {1} summary events for writing", 
+                        batchIndex, batchSummaryData.Sum(b => b.Count));
                 }
+                
+                batchStats.EventsCount = batchSummaryData.Sum(b => b.Count);
+                batchStats.EventsInWritingQueue = _dataWriter.DataQueue.Count;
+                batchStats.Stopwatch.Stop();
+                Statistics.StatisticsQueue.Add(batchStats, cancelToken);
+                
+                _logger.InfoFormat("SUMMARY-BULK Time Batch {0} processed - Duration: {1} ms, Events: {2}",
+                    batchIndex, batchStats.Stopwatch.ElapsedMilliseconds, batchStats.EventsCount);
+                
+                batchIndex++;
             }
         }
 
@@ -303,14 +351,41 @@ namespace DataReader.Core
             var result = new List<AFTimeRange>();
             var currentStart = timeRange.StartTime;
             
-            // Calculate batch duration by multiplying the interval TimeSpan
+            // Use interval-based arithmetic to maintain alignment with summary boundaries
+            // For daily intervals at 19:00, each batch end must align to 19:00 
+            // This is achieved by adding the interval N times using calendar-aware arithmetic
             var intervalTimeSpan = interval.ToTimeSpan();
-            var batchDurationSeconds = intervalTimeSpan.TotalSeconds * intervalsPerBatch;
-            var batchDuration = new AFTimeSpan(TimeSpan.FromSeconds(batchDurationSeconds));
+            
+            // Detect if this is a day-based interval (within 1 second of 24 hours)
+            // For day intervals, use calendar date arithmetic to preserve time-of-day
+            bool isDayInterval = Math.Abs(intervalTimeSpan.TotalDays - Math.Round(intervalTimeSpan.TotalDays)) < 0.00002; // ~1.7 seconds tolerance
+            int daysToAdd = isDayInterval ? (int)Math.Round(intervalTimeSpan.TotalDays) : 0;
 
             while (currentStart < timeRange.EndTime)
             {
-                var currentEnd = currentStart + batchDuration;
+                // Calculate the end of this batch by adding intervalsPerBatch times the interval
+                // Use LocalTime to preserve time-of-day and handle DST correctly
+                var currentLocalTime = currentStart.LocalTime;
+                AFTime currentEnd;
+                
+                if (isDayInterval && daysToAdd > 0)
+                {
+                    // For day-based intervals, use calendar day addition to preserve time-of-day
+                    // AddDays ensures 19:00:00 remains 19:00:00 regardless of DST transitions
+                    var nextLocalTime = currentLocalTime.AddDays(daysToAdd * intervalsPerBatch);
+                    currentEnd = new AFTime(nextLocalTime);
+                }
+                else
+                {
+                    // For non-day intervals, add the interval multiple times
+                    var nextLocalTime = currentLocalTime;
+                    for (int i = 0; i < intervalsPerBatch; i++)
+                    {
+                        nextLocalTime = nextLocalTime.Add(intervalTimeSpan);
+                    }
+                    currentEnd = new AFTime(nextLocalTime);
+                }
+                
                 if (currentEnd > timeRange.EndTime)
                     currentEnd = timeRange.EndTime;
 
@@ -319,6 +394,29 @@ namespace DataReader.Core
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Converts AFSummaryTypes enum to a reliable string representation
+        /// This avoids issues with ToString() on flags enums
+        /// </summary>
+        private string GetSummaryTypeName(AFSummaryTypes summaryType)
+        {
+            // Handle each individual summary type explicitly
+            if (summaryType == AFSummaryTypes.Total) return "Total";
+            if (summaryType == AFSummaryTypes.Average) return "Average";
+            if (summaryType == AFSummaryTypes.Minimum) return "Minimum";
+            if (summaryType == AFSummaryTypes.Maximum) return "Maximum";
+            if (summaryType == AFSummaryTypes.Range) return "Range";
+            if (summaryType == AFSummaryTypes.StdDev) return "StdDev";
+            if (summaryType == AFSummaryTypes.PopulationStdDev) return "PopulationStdDev";
+            if (summaryType == AFSummaryTypes.Count) return "Count";
+            if (summaryType == AFSummaryTypes.PercentGood) return "PercentGood";
+            if (summaryType == AFSummaryTypes.TotalWithUOM) return "TotalWithUOM";
+            
+          
+            // Fallback to ToString() for any unhandled cases
+            return summaryType.ToString();
         }
     }
 }
