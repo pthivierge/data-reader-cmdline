@@ -29,17 +29,32 @@ namespace DataReader.Core
             
             // For day-based intervals in local time, we need to use calendar day arithmetic
             // to maintain the same time-of-day across DST transitions
-            // Example: 07:00:00 should remain 07:00:00 every day, not shift to 08:00:00 after DST
+            // Example: 19:00:00 should remain 19:00:00 every day, not shift due to DST
             
             var currentTime = startTime;
+            
+            // Detect if this is a day-based interval (within 1 second of 24 hours)
+            // For day intervals, use calendar date arithmetic to preserve time-of-day
+            bool isDayInterval = Math.Abs(interval.TotalDays - Math.Round(interval.TotalDays)) < 0.00002; // ~1.7 seconds tolerance
+            int daysToAdd = isDayInterval ? (int)Math.Round(interval.TotalDays) : 0;
+            
             while (currentTime < endTime)
             {
                 dates.Add(currentTime);
                 
-                // Use calendar date arithmetic for local time to preserve time-of-day across DST
-                // Add interval to LocalTime as DateTime, then convert back to AFTime
-                var nextLocalTime = currentTime.LocalTime.Add(interval);
-                currentTime = new AFTime(nextLocalTime);
+                if (isDayInterval && daysToAdd > 0)
+                {
+                    // Use calendar day addition to preserve time-of-day across DST transitions
+                    // AddDays adds calendar days, so 19:00:00 remains 19:00:00 regardless of DST
+                    var nextLocalTime = currentTime.LocalTime.AddDays(daysToAdd);
+                    currentTime = new AFTime(nextLocalTime);
+                }
+                else
+                {
+                    // For non-day intervals (hours, minutes, etc.), use duration addition
+                    var nextLocalTime = currentTime.LocalTime.Add(interval);
+                    currentTime = new AFTime(nextLocalTime);
+                }
             }
 
             dates.Add(endTime);
