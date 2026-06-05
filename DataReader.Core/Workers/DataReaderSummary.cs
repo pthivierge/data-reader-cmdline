@@ -44,7 +44,6 @@ namespace DataReader.Core
         private int _targetEventsPerRequest;
         private int? _customIntervalsPerBatch;
         private int _tagsChunkSize;
-        private const int _maxDegreeOfParallelism = 4;
 
         public DataReaderSummary(
             DataReaderSettings dataReaderSettings, 
@@ -76,7 +75,7 @@ namespace DataReader.Core
              _logger.Info("DataReaderSummary initialized - SummaryTypes: {0}, Interval: {1}, Basis: {2}, Timestamp: {3}, CustomIntervalsPerBatch: {4}, TagsChunkSize: {5}, MaxParallelThreads: {6}",
                  _summaryTypes, _summaryInterval, _calculationBasis, _timestampCalculation, 
                  _customIntervalsPerBatch.HasValue ? _customIntervalsPerBatch.Value.ToString() : "Auto",
-                 _tagsChunkSize, _maxDegreeOfParallelism);
+                 _tagsChunkSize, _dataReaderSettings.MaxDegreeOfParallelism);
          }
 
         /// <summary>
@@ -93,7 +92,7 @@ namespace DataReader.Core
                 query.QueryId, query.PiPoints.Count,
                 timeRange.StartTime.LocalTime, timeRange.EndTime.LocalTime,
                 timeRange.StartTime.UtcTime.ToIso8601Utc(), timeRange.EndTime.UtcTime.ToIso8601Utc(),
-                _tagsChunkSize, _maxDegreeOfParallelism);
+                _tagsChunkSize, _dataReaderSettings.MaxDegreeOfParallelism);
 
             // Calculate batching based on chunk size (not all tags)
             int summaryTypesCount = CountSummaryTypes(_summaryTypes);
@@ -151,7 +150,7 @@ namespace DataReader.Core
 
                 // Process tag chunks in parallel (max 4 threads)
                 Parallel.ForEach(tagChunks, 
-                    new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancelToken },
+                    new ParallelOptions { MaxDegreeOfParallelism = _dataReaderSettings.MaxDegreeOfParallelism, CancellationToken = cancelToken },
                     (tagChunk, state, chunkIndex) =>
                     {
                         try
@@ -343,6 +342,11 @@ namespace DataReader.Core
                 return 1;
             
             int intervalsPerBatch = _targetEventsPerRequest / (summaryTypesCount * totalTags);
+            if (intervalsPerBatch < 1)
+            {
+                _logger.Warn("CalculateIntervalsPerBatch: {0} summary types x {1} tags/chunk = {2} events/interval exceeds the ~{3} events/bulk-call target; clamping to 1 interval per batch. Consider lowering --tagsChunkSize.",
+                    summaryTypesCount, totalTags, summaryTypesCount * totalTags, _targetEventsPerRequest);
+            }
             return Math.Max(1, intervalsPerBatch);
         }
 
@@ -377,11 +381,27 @@ namespace DataReader.Core
                 }
                 else
                 {
-                    // For non-day intervals, add the interval multiple times
+                    // For non-day intervals, add the interval multiple times.
+                    // Mirror TimeStampsGenerator: if a step lands in a DST spring-forward gap
+                    // (an invalid local time), advance past the gap so AFTime gets a valid time.
                     var nextLocalTime = currentLocalTime;
                     for (int i = 0; i < intervalsPerBatch; i++)
                     {
                         nextLocalTime = nextLocalTime.Add(intervalTimeSpan);
+
+                        if (TimeZoneInfo.Local.IsInvalidTime(nextLocalTime))
+                        {
+                            TimeSpan dstDelta = TimeSpan.FromHours(1);
+                            foreach (var rule in TimeZoneInfo.Local.GetAdjustmentRules())
+                            {
+                                if (rule.DateStart <= nextLocalTime.Date && nextLocalTime.Date <= rule.DateEnd)
+                                {
+                                    dstDelta = rule.DaylightDelta;
+                                    break;
+                                }
+                            }
+                            nextLocalTime = nextLocalTime.Add(dstDelta);
+                        }
                     }
                     currentEnd = new AFTime(nextLocalTime);
                 }

@@ -180,20 +180,29 @@ namespace DataReader.CommandLine
                     _logger.Info("Counted {0} tags from file (ignoring estimatedTagsCount parameter)", actualOrEstimatedTagCount);
                 }
                 
-                // Target 30000 events per request for optimal batching
-                // IMPORTANT: this must be an *integer* number of summary intervals per request.
-                // If we use a fractional number of intervals (via seconds math), Orchestrator boundaries drift
-                // (e.g., 19:00 becomes 22:46), which creates partial summary intervals.
-                double intervalsPerRequestRaw = 30000.0 / (actualOrEstimatedTagCount * summaryTypesCount);
-                var intervalsPerRequest = Math.Max(1, (int)Math.Floor(intervalsPerRequestRaw));
+                // Size the Orchestrator time slice to match ONE bulk call, so the two batching
+                // tiers stay coordinated (one Orchestrator window == one summary batch). The unit
+                // of a bulk call is tagsChunkSize tags, targeting ~10,000 events per call (an event
+                // = one value+timestamp for one tag). estimatedTagsCount is NOT used to size this.
+                // IMPORTANT: this must be an *integer* number of summary intervals per request, else
+                // Orchestrator boundaries drift (e.g. 19:00 -> 22:46) and create partial intervals.
+                int intervalsPerRequest;
+                if (options.IntervalsPerBatch > 0)
+                {
+                    intervalsPerRequest = options.IntervalsPerBatch;
+                }
+                else
+                {
+                    intervalsPerRequest = Math.Max(1, (int)Math.Floor(10000.0 / (options.TagsChunkSize * summaryTypesCount)));
+                }
 
                 double requestSeconds = Math.Abs(intervalTimeSpan.TotalSeconds) * intervalsPerRequest;
                 readerSettings.TimeIntervalPerDataRequest = TimeSpan.FromSeconds(requestSeconds);
 
                 _logger.Info(
-                    "Summary mode: {0} summary types, interval={1}, tags={2}, TimeIntervalPerDataRequest={3:F2} days ({4} intervals; raw={5:F2})",
-                    summaryTypesCount, summaryInterval, actualOrEstimatedTagCount,
-                    readerSettings.TimeIntervalPerDataRequest.TotalDays, intervalsPerRequest, intervalsPerRequestRaw);
+                    "Summary mode: {0} summary types, interval={1}, tags={2}, tagsChunkSize={3}, TimeIntervalPerDataRequest={4:F2} days ({5} intervals/window, ~10k events/bulk-call)",
+                    summaryTypesCount, summaryInterval, actualOrEstimatedTagCount, options.TagsChunkSize,
+                    readerSettings.TimeIntervalPerDataRequest.TotalDays, intervalsPerRequest);
 
                 _logger.Info("Creating worker objects for SUMMARY data extraction...");
                 var dataWriter = new DataWriter(options.OutfileName, options.EventsPerFile, options.WritersCount, null);
