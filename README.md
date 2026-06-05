@@ -13,6 +13,18 @@ The application supports two modes accessed via verbs:
 - **[User Guide](README.md)** - Command-line usage, examples, and options (this document)
 - **[Architecture Guide](ARCHITECTURE.md)** - Internal architecture, threading model, and developer documentation
 
+# Recent Improvements
+
+The project was modernized and its extraction performance was significantly improved:
+
+- **Migrated to .NET 8** and the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client install is required to build or run (see Prerequisites).
+- **Logging moved to NLog** (configured via `NLog.config`), replacing log4net.
+- **File output now respects `--eventsPerFile`.** The summary path used to create one file per internal batch (thousands of tiny files on long extractions); rows now accumulate into stable, writer-scoped files that roll only when `--eventsPerFile` is reached.
+- **Coordinated summary batching** so each bulk call to the PI Data Archive targets about 10,000 events (one value plus timestamp per tag), the sweet spot for the server bulk API. See [Performance and Tuning](#performance-and-tuning).
+- **Correctness fixes**: daylight-saving spring-forward gaps are handled when generating interval boundaries, and bulk-call concurrency is capped (default 4) to avoid saturating the PI Data Archive.
+
+Measured on a 3-year / 10-tag / 10-minute summary extraction: about 2x faster end-to-end, with output files reduced from thousands to a handful and no change to the data.
+
 # Build
 
 The application targets **.NET 8** and references the AVEVA AF SDK through the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client installation is required to build. Build with Visual Studio 2022+ or from the command line:
@@ -299,6 +311,18 @@ DataReader.exe <verb> --help
 
 --timestampCalculation    (Default: Auto) Timestamp to return for each summary.
                           Options: Auto, EarliestTime, MostRecentTime
+
+--tagsChunkSize           (Default: 50) Number of tags sent per bulk call to the
+                          PI Data Archive. Together with the number of summary
+                          types and the interval count, this targets ~10,000
+                          events per call. When extracting few tags, lower it
+                          toward your actual tag count for best throughput
+                          (see Performance and Tuning).
+
+--intervalsPerBatch       (Default: 0 = auto) Number of summary intervals per
+                          bulk call. 0 lets the app compute it to hit the
+                          ~10,000-events-per-call target from tagsChunkSize and
+                          summary types. Set a value only to override auto-sizing.
 ```
 
 ## Test Verb Options
@@ -311,6 +335,25 @@ DataReader.exe <verb> --help
 
 --printTags               Print all tag names found by the queries
 ```
+
+# Performance and Tuning
+
+The application pulls large volumes of data efficiently by making **bulk calls** to the PI Data Archive, each fetching many tags at once. An *event* is a single value plus timestamp for one tag. The goal is for each bulk call to return roughly **10,000 events**: large enough to amortize round-trips, small enough to keep memory and the server comfortable.
+
+For **summary** extractions, the per-call event count is:
+
+```
+events per call = tagsChunkSize x summaryTypes x intervalsPerBatch
+```
+
+The app sizes `intervalsPerBatch` automatically so this lands near 10,000, and it sweeps the time range period by period (all tags for a period, then the next) to make good use of the server cache.
+
+**Practical tips:**
+
+- **Few tags?** The default `--tagsChunkSize 50` assumes at least ~50 tags. When extracting fewer (say 10), set `--tagsChunkSize 10` so each call still reaches ~10,000 events. In a 3-year / 10-tag / 10-minute test this roughly halved the run time and cut network round-trips about 5x.
+- **Many tags?** The default of 50 already works well; leave it.
+- **Concurrency** is capped at 4 by default because the PI Data Archive serves bulk calls from a small thread pool. Raising it risks saturating the server.
+- Use **`--eventsPerFile`** (default 500,000) to control how many rows go in each CSV file; files roll automatically when the limit is reached.
 
 # Output Format
 
@@ -348,8 +391,11 @@ Example:
 2024-01-16T00:00:00-05:00,27.45,Reactor1_Temperature,Maximum
 ```
 
-**Note:** File names use local timestamps for easy identification:
-- Example: `extract_1_2024-01-15_00-00-00_summary_i1_w1.csv`
+**Note:** Output files are named per writer and roll when `--eventsPerFile` is reached:
+- Raw: `data_w1.csv`, then `data_w1_p1.csv`, `data_w1_p2.csv`, ...
+- Summary: `data_summary_w1.csv`, then `data_summary_w1_p1.csv`, ...
+
+Sort by the `Timestamp` column (or use `--writersCount 1`) if you need a single chronologically ordered set.
 
 
 
