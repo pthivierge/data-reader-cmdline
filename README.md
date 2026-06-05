@@ -15,12 +15,21 @@ The application supports two modes accessed via verbs:
 
 # Build
 
+The application targets **.NET 8** and references the AVEVA AF SDK through the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client installation is required to build. Build with Visual Studio 2022+ or from the command line:
+
+```
+dotnet build data-reader.sln -c Release
+```
+
 Once compiled, it creates a **Build** folder in the solution folder. You can take this folder and place it on the system you would like to make the test on.
 
 # Prerequisites on host system
 
-* .NET Framework 4.5+
-* AFSDK 2.8+, for bulk calls support and also for the new *PIPointQuery.ParseQuery* method introduced in this version.
+* [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64)
+* [Microsoft Visual C++ Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) — required by the .NET 8 AF SDK
+* Windows (the AF SDK is Windows-only)
+
+> A local PI AF Client install is **not** required on the host: the AF SDK and its plug-ins are bundled with the application via the `Aveva.AFSDK` NuGet package.
 
 # Getting Started
 
