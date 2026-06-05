@@ -44,6 +44,10 @@ namespace DataReader.Core
         private int _targetEventsPerRequest;
         private int? _customIntervalsPerBatch;
         private int _tagsChunkSize;
+        // The PI Data Archive serves bulk calls from a small thread pool (~4). This cap keeps
+        // client-side tag-chunk parallelism from over-subscribing/saturating the server.
+        // Intentional magic number -- do not raise without knowing the server bulk-thread count.
+        private const int _maxDegreeOfParallelism = 4;
 
         public DataReaderSummary(
             DataReaderSettings dataReaderSettings, 
@@ -75,7 +79,7 @@ namespace DataReader.Core
              _logger.Info("DataReaderSummary initialized - SummaryTypes: {0}, Interval: {1}, Basis: {2}, Timestamp: {3}, CustomIntervalsPerBatch: {4}, TagsChunkSize: {5}, MaxParallelThreads: {6}",
                  _summaryTypes, _summaryInterval, _calculationBasis, _timestampCalculation, 
                  _customIntervalsPerBatch.HasValue ? _customIntervalsPerBatch.Value.ToString() : "Auto",
-                 _tagsChunkSize, _dataReaderSettings.MaxDegreeOfParallelism);
+                 _tagsChunkSize, _maxDegreeOfParallelism);
          }
 
         /// <summary>
@@ -92,7 +96,7 @@ namespace DataReader.Core
                 query.QueryId, query.PiPoints.Count,
                 timeRange.StartTime.LocalTime, timeRange.EndTime.LocalTime,
                 timeRange.StartTime.UtcTime.ToIso8601Utc(), timeRange.EndTime.UtcTime.ToIso8601Utc(),
-                _tagsChunkSize, _dataReaderSettings.MaxDegreeOfParallelism);
+                _tagsChunkSize, _maxDegreeOfParallelism);
 
             // Calculate batching based on chunk size (not all tags)
             int summaryTypesCount = CountSummaryTypes(_summaryTypes);
@@ -150,7 +154,7 @@ namespace DataReader.Core
 
                 // Process tag chunks in parallel (max 4 threads)
                 Parallel.ForEach(tagChunks, 
-                    new ParallelOptions { MaxDegreeOfParallelism = _dataReaderSettings.MaxDegreeOfParallelism, CancellationToken = cancelToken },
+                    new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism, CancellationToken = cancelToken },
                     (tagChunk, state, chunkIndex) =>
                     {
                         try
