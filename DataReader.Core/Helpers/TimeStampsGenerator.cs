@@ -53,6 +53,25 @@ namespace DataReader.Core
                 {
                     // For non-day intervals (hours, minutes, etc.), use duration addition
                     var nextLocalTime = currentTime.LocalTime.Add(interval);
+                    
+                    // Handle DST "spring forward" gap: if the resulting local time
+                    // is invalid (falls in the skipped hour), advance past the gap
+                    if (TimeZoneInfo.Local.IsInvalidTime(nextLocalTime))
+                    {
+                        // Find the next valid time by adding the DST adjustment rules
+                        var rules = TimeZoneInfo.Local.GetAdjustmentRules();
+                        TimeSpan dstDelta = TimeSpan.FromHours(1); // default 1h
+                        foreach (var rule in rules)
+                        {
+                            if (rule.DateStart <= nextLocalTime.Date && nextLocalTime.Date <= rule.DateEnd)
+                            {
+                                dstDelta = rule.DaylightDelta;
+                                break;
+                            }
+                        }
+                        nextLocalTime = nextLocalTime.Add(dstDelta);
+                    }
+                    
                     currentTime = new AFTime(nextLocalTime);
                 }
             }
