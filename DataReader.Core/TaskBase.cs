@@ -16,20 +16,20 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using log4net;
+using NLog;
 
 namespace DataReader.Core
 {
     public abstract class TaskBase
     {
-        protected readonly ILog _logger;
+        protected readonly Logger _logger;
         private readonly List<Task> _tasks = new List<Task>();
         
         private readonly CancellationTokenSource _cancellationToken = new CancellationTokenSource();
 
         protected TaskBase()
         {
-            _logger = LogManager.GetLogger(this.GetType());
+            _logger = LogManager.GetLogger(GetType().FullName);
         }
 
 

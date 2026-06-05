@@ -18,14 +18,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using log4net;
+using NLog;
 using OSIsoft.AF.Asset;
 
 namespace DataReader.Core
 {
     public class DigitalStatesFilter : IDataFilter
     {
-        private readonly ILog _logger = LogManager.GetLogger(typeof(DigitalStatesFilter));
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
         readonly string[] _rejectedStates=null;
 
@@ -49,7 +49,7 @@ namespace DataReader.Core
                 isFiltered = _rejectedStates.Contains(digValue.Name.ToLower());
 
                 if(isFiltered)
-                    _logger.DebugFormat("Filtered digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, enumerationValue);
+                    _logger.Debug("Filtered digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, enumerationValue);
 
             }
 

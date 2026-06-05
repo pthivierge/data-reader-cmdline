@@ -91,7 +91,7 @@ namespace DataReader.Core
 
         protected override void DoTask(CancellationToken cancelToken)
         {
-            _logger.InfoFormat("Writing data task started...");
+            _logger.Info("Writing data task started...");
 
 
 
@@ -250,7 +250,7 @@ namespace DataReader.Core
                         }
                         catch (Exception ex)
                         {
-                            _logger.Error(ex);
+                            _logger.Error(ex, ex.Message);
                         }
 
                     }, cancelToken);
@@ -271,7 +271,7 @@ namespace DataReader.Core
                 if (writer != null) writer.Dispose();
             }
 
-            _logger.InfoFormat("Datawriter completed.");
+            _logger.Info("Datawriter completed.");
         }
 
         private static bool CheckFilters(AFValue afValue, IDataFilter[] dataFilters)

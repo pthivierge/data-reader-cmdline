@@ -18,7 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using log4net;
+using NLog;
 using OSIsoft.AF.Asset;
 using OSIsoft.AF.PI;
 
@@ -26,7 +26,7 @@ namespace DataReader.Core
 {
     public class SystemStatesFilter : IDataFilter
     {
-        private readonly ILog _logger = LogManager.GetLogger(typeof(SystemStatesFilter));
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
 
         public SystemStatesFilter()
@@ -46,7 +46,7 @@ namespace DataReader.Core
                 isFiltered = digValue.EnumerationSet == AFEnumerationSet.SystemStateSet;
 
                 if (isFiltered)
-                    _logger.DebugFormat("Filtered system digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, enumerationValue);
+                    _logger.Debug("Filtered system digital value: {0} - {1} - {2}", value.PIPoint.Name, value.Timestamp, enumerationValue);
 
             }
 

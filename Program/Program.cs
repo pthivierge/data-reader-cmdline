@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using CommandLine;
 using CommandLine.Text;
 using DataReader.Core;
-using log4net;
+using NLog;
 using OSIsoft.AF.Data;
 using OSIsoft.AF.Time;
 
@@ -38,7 +38,7 @@ namespace DataReader.CommandLine
 
         private static void Main(string[] args)
         {
-            var _logger = LogManager.GetLogger(typeof(Program));
+            var _logger = LogManager.GetCurrentClassLogger();
 
             try
             {
@@ -53,12 +53,12 @@ namespace DataReader.CommandLine
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
                 Environment.Exit(1);
             }
         }
 
-        private static void DisplayHelp<T>(ParserResult<T> result, IEnumerable<global::CommandLine.Error> errs, ILog _logger)
+        private static void DisplayHelp<T>(ParserResult<T> result, IEnumerable<global::CommandLine.Error> errs, Logger _logger)
         {
             var helpText = HelpText.AutoBuild(result, h =>
             {
@@ -73,7 +73,7 @@ namespace DataReader.CommandLine
             Environment.Exit(1);
         }
 
-        private static void RunTestTagSearch(TestTagSearchOptions options, ILog _logger)
+        private static void RunTestTagSearch(TestTagSearchOptions options, Logger _logger)
         {
             try
             {
@@ -94,11 +94,11 @@ namespace DataReader.CommandLine
                 foreach (var query in queriesArray)
                 {
                     var tags = search.Search(query).ToList();
-                    _logger.WarnFormat("Found {0} tags with query: {1}", tags.Count, query);
+                    _logger.Warn("Found {0} tags with query: {1}", tags.Count, query);
 
                     if (options.PrintTags)
                     {
-                        tags.ForEach(t => _logger.InfoFormat("  Tag: {0}, PointClass: {1}", t.Name, t.PointClass));
+                        tags.ForEach(t => _logger.Info("  Tag: {0}, PointClass: {1}", t.Name, t.PointClass));
                     }
                 }
 
@@ -106,12 +106,12 @@ namespace DataReader.CommandLine
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
                 Environment.Exit(1);
             }
         }
 
-        private static void RunRawDataExtraction(RawDataOptions options, ILog _logger)
+        private static void RunRawDataExtraction(RawDataOptions options, Logger _logger)
         {
             try
             {
@@ -148,12 +148,12 @@ namespace DataReader.CommandLine
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
                 Environment.Exit(1);
             }
         }
 
-        private static void RunSummaryDataExtraction(SummaryDataOptions options, ILog _logger)
+        private static void RunSummaryDataExtraction(SummaryDataOptions options, Logger _logger)
         {
             try
             {
@@ -177,7 +177,7 @@ namespace DataReader.CommandLine
                 {
                     actualOrEstimatedTagCount = File.ReadAllLines(options.TagFile)
                         .Count(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("#"));
-                    _logger.InfoFormat("Counted {0} tags from file (ignoring estimatedTagsCount parameter)", actualOrEstimatedTagCount);
+                    _logger.Info("Counted {0} tags from file (ignoring estimatedTagsCount parameter)", actualOrEstimatedTagCount);
                 }
                 
                 // Target 30000 events per request for optimal batching
@@ -190,7 +190,7 @@ namespace DataReader.CommandLine
                 double requestSeconds = Math.Abs(intervalTimeSpan.TotalSeconds) * intervalsPerRequest;
                 readerSettings.TimeIntervalPerDataRequest = TimeSpan.FromSeconds(requestSeconds);
 
-                _logger.InfoFormat(
+                _logger.Info(
                     "Summary mode: {0} summary types, interval={1}, tags={2}, TimeIntervalPerDataRequest={3:F2} days ({4} intervals; raw={5:F2})",
                     summaryTypesCount, summaryInterval, actualOrEstimatedTagCount,
                     readerSettings.TimeIntervalPerDataRequest.TotalDays, intervalsPerRequest, intervalsPerRequestRaw);
@@ -217,7 +217,7 @@ namespace DataReader.CommandLine
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
                 Environment.Exit(1);
             }
         }
@@ -234,7 +234,7 @@ namespace DataReader.CommandLine
             return piConnection;
         }
 
-        private static void ExecuteDataExtraction(CommonOptions options, PIConnection piConnection, DataReaderSettings readerSettings, IDataReader dataReader, DataWriter dataWriter, ILog _logger, AFTimeSpan? summaryInterval = null, int summaryTypesCount = 0)
+        private static void ExecuteDataExtraction(CommonOptions options, PIConnection piConnection, DataReaderSettings readerSettings, IDataReader dataReader, DataWriter dataWriter, Logger _logger, AFTimeSpan? summaryInterval = null, int summaryTypesCount = 0)
         {
             // TimeIntervalPerDataRequest has already been calculated with actual tag count from file
             // No need to recalculate here
@@ -252,12 +252,12 @@ namespace DataReader.CommandLine
 
             if (!string.IsNullOrEmpty(options.TagFile))
             {
-                _logger.InfoFormat("Reading tags from file: {0}", options.TagFile);
+                _logger.Info("Reading tags from file: {0}", options.TagFile);
                 var fileQueries = File.ReadAllLines(options.TagFile)
                     .Where(line => !string.IsNullOrWhiteSpace(line) && !line.TrimStart().StartsWith("#"))
                     .Select(line => line.Trim())
                     .ToArray();
-                _logger.InfoFormat("Loaded {0} tag queries from file", fileQueries.Length);
+                _logger.Info("Loaded {0} tag queries from file", fileQueries.Length);
                 allTagQueries.AddRange(fileQueries);
             }
 

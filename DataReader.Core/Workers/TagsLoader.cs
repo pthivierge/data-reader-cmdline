@@ -48,7 +48,7 @@ namespace DataReader.Core
 
         protected override void DoTask(CancellationToken cancelToken)
         {
-            _logger.InfoFormat("TagsLoader started - iterating over {0} query(ies)", _queries.Length);
+            _logger.Info("TagsLoader started - iterating over {0} query(ies)", _queries.Length);
             
             // Accumulate points across all queries before batching
             var pipoints = new List<PIPoint>();
@@ -98,7 +98,7 @@ namespace DataReader.Core
             // enqueue the query to be processed
             _orchestrator.IncomingPiPoints.Add(dataQuery, cancelToken);
 
-            _logger.InfoFormat("TagsLoader loaded {0} for data collection. Total {1} tags loaded.", pointsToSend, _tagCount);
+            _logger.Info("TagsLoader loaded {0} for data collection. Total {1} tags loaded.", pointsToSend, _tagCount);
         }
 
         public IEnumerable<PIPoint> Search(string query)
@@ -110,13 +110,13 @@ namespace DataReader.Core
                 exactPoint = PIPoint.FindPIPoint(_server, query);
                 if (exactPoint != null)
                 {
-                    _logger.DebugFormat("Found tag by exact name: {0}", query);
+                    _logger.Debug("Found tag by exact name: {0}", query);
                     return new[] { exactPoint };
                 }
             }
             catch (Exception ex)
             {
-                _logger.DebugFormat("Tag '{0}' not found by exact name, trying query search. Error: {1}", query, ex.Message);
+                _logger.Debug("Tag '{0}' not found by exact name, trying query search. Error: {1}", query, ex.Message);
             }
 
             // If not found by exact name, use query search
@@ -125,12 +125,12 @@ namespace DataReader.Core
                 var queries = PIPointQuery.ParseQuery(_server, query);
                 var points = PIPoint.FindPIPoints(_server, queries);
                 var pointsList = points.ToList();
-                _logger.DebugFormat("Query '{0}' returned {1} tag(s)", query, pointsList.Count);
+                _logger.Debug("Query '{0}' returned {1} tag(s)", query, pointsList.Count);
                 return pointsList;
             }
             catch (Exception ex)
             {
-                _logger.ErrorFormat("Error searching for tag '{0}': {1}", query, ex.Message);
+                _logger.Error("Error searching for tag '{0}': {1}", query, ex.Message);
                 return new PIPoint[0];
             }
         }

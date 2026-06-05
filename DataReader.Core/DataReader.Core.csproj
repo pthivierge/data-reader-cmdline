@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="Aveva.AFSDK" Version="3.2.0.52" />
-    <PackageReference Include="log4net" Version="3.2.0" />
+    <PackageReference Include="NLog" Version="6.1.3" />
   </ItemGroup>
 
 </Project>

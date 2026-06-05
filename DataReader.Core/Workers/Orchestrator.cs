@@ -42,14 +42,14 @@ namespace DataReader.Core
             var st = new AFTime(startTime);
             var et = new AFTime(endTime);
 
-            _logger.InfoFormat("Getting time intervals: {0} seconds, Start (Local): {1}, End (Local): {2}", 
+            _logger.Info("Getting time intervals: {0} seconds, Start (Local): {1}, End (Local): {2}", 
                 interval.TotalSeconds, st.LocalTime, et.LocalTime);
-            _logger.InfoFormat("Getting time intervals: Start (UTC): {0}, End (UTC): {1}", 
+            _logger.Info("Getting time intervals: Start (UTC): {0}, End (UTC): {1}", 
                 st.UtcTime, et.UtcTime);
             
             _datesIntervals = TimeStampsGenerator.Get(interval, st, et);
 
-            _logger.InfoFormat("Will work with {0} dates intervals", _datesIntervals.Count);
+            _logger.Info("Will work with {0} dates intervals", _datesIntervals.Count);
 
             _dataReader = dataReader;
         }
@@ -96,7 +96,7 @@ namespace DataReader.Core
                     ? _datesIntervals[i + 1].LocalTime
                     : _datesIntervals[i + 1].LocalTime.AddSeconds(-1);
 
-                _logger.DebugFormat("Times (Local): {0:G} - {1:G}",
+                _logger.Debug("Times (Local): {0:G} - {1:G}",
                     _datesIntervals[i].LocalTime,
                     intervalEndLocal);
                

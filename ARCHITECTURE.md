@@ -13,7 +13,7 @@ This document provides an in-depth look at the architecture and internal working
 
 ## Overview
 
-DataReader is a high-performance command-line application built on .NET Framework 4.8 that extracts data from OSIsoft PI Data Archive. The architecture follows a **producer-consumer pipeline pattern** with multiple concurrent workers, optimized for throughput when dealing with large datasets (millions of data points, thousands of tags).
+DataReader is a high-performance command-line application built on .NET 8 that extracts data from OSIsoft PI Data Archive. The architecture follows a **producer-consumer pipeline pattern** with multiple concurrent workers, optimized for throughput when dealing with large datasets (millions of data points, thousands of tags).
 
 ### Key Design Principles
 
@@ -641,7 +641,7 @@ When contributing to the DataReader project:
 
 1. **Maintain Thread Safety**: Always use thread-safe collections for cross-thread communication
 2. **Follow Patterns**: Use the existing producer-consumer patterns
-3. **Log Appropriately**: Use log4net for debugging and monitoring
+3. **Log Appropriately**: Use NLog (configured via `NLog.config`) for debugging and monitoring
 4. **Document Performance**: Include benchmark results for significant changes
 5. **Test at Scale**: Verify with large tag counts and long time ranges
 

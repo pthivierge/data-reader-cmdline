@@ -31,7 +31,7 @@ namespace DataReader.Core
     {
         
         public readonly BlockingCollection<DataQuery> QueriesQueue = new BlockingCollection<DataQuery>();
-        private PIServer _piServer;
+
         private DataReaderSettings _dataReaderSettings;
         private DataWriter _dataWriter;
         bool _enableWrite;
@@ -73,7 +73,7 @@ namespace DataReader.Core
         private void GetRecordedValuesBulkParrallel(DataQuery query, AFTimeRange timeRange, int bulkPageSize, int maxDegOfParallel, int bulkParallelChunkSize, CancellationToken cancelToken)
         {
 
-            _logger.WarnFormat("QUERY (BULK-P) # {5} - TAGS: {6} - PERIOD: {3} to {4} - MAX DEG. PAR. {0}, TAG_CHUNK_SIZE {1}, TAG_PAGE_SIZE {2},", maxDegOfParallel, bulkParallelChunkSize, bulkPageSize, timeRange.StartTime,timeRange.EndTime, query.QueryId, query.PiPoints.Count);
+            _logger.Warn("QUERY (BULK-P) # {5} - TAGS: {6} - PERIOD: {3} to {4} - MAX DEG. PAR. {0}, TAG_CHUNK_SIZE {1}, TAG_PAGE_SIZE {2},", maxDegOfParallel, bulkParallelChunkSize, bulkPageSize, timeRange.StartTime,timeRange.EndTime, query.QueryId, query.PiPoints.Count);
 
             // PARALLEL bulk 
             var pointListList = query.PiPoints.ToList().ChunkBy(bulkParallelChunkSize);
@@ -88,7 +88,7 @@ namespace DataReader.Core
 
                     try
                     {
-                       // _logger.InfoFormat("Bulk query");
+                       // _logger.Info("Bulk query");
                         IEnumerable<AFValues> bulkData = pointList.RecordedValues(timeRange,
                             AFBoundaryType.Inside, String.Empty, false, pagingConfiguration).ToList();
 
@@ -115,14 +115,14 @@ namespace DataReader.Core
 
 
                     }
-                    catch (OperationCanceledException ex)
+                    catch (OperationCanceledException)
                     {
                         _logger.Error(pagingConfiguration.Error);
                     }
                     catch (Exception ex)
                     {
 
-                        _logger.Error(ex);
+                        _logger.Error(ex, ex.Message);
 
                     }
 

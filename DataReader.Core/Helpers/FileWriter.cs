@@ -19,13 +19,13 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using log4net;
+using NLog;
 
 namespace DataReader.Core
 {
     public class FileWriter : IDisposable
     {
-        private readonly ILog _logger = LogManager.GetLogger(typeof(FileWriter));
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         FileStream _fileStream;
         StreamWriter _streamWriter;
         private int _lineCount;
@@ -65,7 +65,7 @@ namespace DataReader.Core
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
             }
         }
 
@@ -93,11 +93,11 @@ namespace DataReader.Core
 
                 _lineCount = 0;
                 
-                _logger.InfoFormat("Created a new file: {0}.", fullFileName);
+                _logger.Info("Created a new file: {0}.", fullFileName);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
             }
         }
 

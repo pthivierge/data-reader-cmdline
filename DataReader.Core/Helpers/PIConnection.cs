@@ -15,7 +15,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using log4net;
+using NLog;
 using OSIsoft.AF;
 using OSIsoft.AF.PI;
 
@@ -26,7 +26,7 @@ namespace DataReader.Core
     /// </summary>
     public class PIConnection
     {
-        private readonly ILog _logger = LogManager.GetLogger(typeof(PIConnection));
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private PIServer _piServer;
         private readonly PIServers _piServers = new PIServers();
 
@@ -76,23 +76,23 @@ namespace DataReader.Core
 
                 if (_memberName == null)
                 {
-                    _logger.InfoFormat("Trying to connect to PI Data Archive {0}. As {1}", _piServer.Name,
+                    _logger.Info("Trying to connect to PI Data Archive {0}. As {1}", _piServer.Name,
                    _piServer.CurrentUserName);
                     _piServer.Connect();
                 }
 
                 else
                 {
-                    _logger.InfoFormat("Connecting to member: {0}",_memberName);
+                    _logger.Info("Connecting to member: {0}",_memberName);
                     _piServer = ConnectMember(_piServer.Name, _memberName);
                 }
                 
-                _logger.InfoFormat("Connected to {0}. As {1}", _piServer.Name, _piServer.CurrentUserName);
+                _logger.Info("Connected to {0}. As {1}", _piServer.Name, _piServer.CurrentUserName);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
             }
 
             return false;

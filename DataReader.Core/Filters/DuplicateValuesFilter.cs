@@ -18,7 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using log4net;
+using NLog;
 using OSIsoft.AF.Asset;
 
 namespace DataReader.Core
@@ -26,7 +26,7 @@ namespace DataReader.Core
     public class DuplicateValuesFilter : IDataFilter
     {
         AFValue lastValue = null;
-        private readonly ILog _logger = LogManager.GetLogger(typeof(DuplicateValuesFilter));
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
         public bool IsFiltered(AFValue value)
         {
@@ -36,7 +36,7 @@ namespace DataReader.Core
                 if (lastValue.Timestamp==value.Timestamp && lastValue.Value==value.Value)
                 {
                     isFiltered = true;
-                    _logger.DebugFormat("Fitlered duplicated value: {0} - {1} - {2}",value.PIPoint.Name, value.Timestamp,value.Value);
+                    _logger.Debug("Fitlered duplicated value: {0} - {1} - {2}",value.PIPoint.Name, value.Timestamp,value.Value);
                 }
             }
 

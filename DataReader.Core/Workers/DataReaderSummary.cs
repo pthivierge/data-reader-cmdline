@@ -73,7 +73,7 @@ namespace DataReader.Core
              // For 233 tags × 10 summary types: 4 intervals ? 12 intervals per batch
              _targetEventsPerRequest = 10000;
              
-             _logger.InfoFormat("DataReaderSummary initialized - SummaryTypes: {0}, Interval: {1}, Basis: {2}, Timestamp: {3}, CustomIntervalsPerBatch: {4}, TagsChunkSize: {5}, MaxParallelThreads: {6}",
+             _logger.Info("DataReaderSummary initialized - SummaryTypes: {0}, Interval: {1}, Basis: {2}, Timestamp: {3}, CustomIntervalsPerBatch: {4}, TagsChunkSize: {5}, MaxParallelThreads: {6}",
                  _summaryTypes, _summaryInterval, _calculationBasis, _timestampCalculation, 
                  _customIntervalsPerBatch.HasValue ? _customIntervalsPerBatch.Value.ToString() : "Auto",
                  _tagsChunkSize, _maxDegreeOfParallelism);
@@ -89,7 +89,7 @@ namespace DataReader.Core
         {
             // timeRange parameter is always in Local time (created from Local DateTimes in DoTask)
             // This ensures daily summaries align with calendar days and handle DST transitions correctly
-            _logger.WarnFormat("QUERY (SUMMARY-BULK) # {0} - TAGS: {1} - PERIOD Local: {2} to {3} | UTC: {4} to {5} - PARALLEL TAG CHUNKING MODE ({6} tags per chunk, max {7} threads)",
+            _logger.Warn("QUERY (SUMMARY-BULK) # {0} - TAGS: {1} - PERIOD Local: {2} to {3} | UTC: {4} to {5} - PARALLEL TAG CHUNKING MODE ({6} tags per chunk, max {7} threads)",
                 query.QueryId, query.PiPoints.Count,
                 timeRange.StartTime.LocalTime, timeRange.EndTime.LocalTime,
                 timeRange.StartTime.UtcTime.ToIso8601Utc(), timeRange.EndTime.UtcTime.ToIso8601Utc(),
@@ -104,7 +104,7 @@ namespace DataReader.Core
             if (_customIntervalsPerBatch.HasValue && _customIntervalsPerBatch.Value > 0)
             {
                 intervalsPerBatch = _customIntervalsPerBatch.Value;
-                _logger.InfoFormat("Using custom intervalsPerBatch: {0}", intervalsPerBatch);
+                _logger.Info("Using custom intervalsPerBatch: {0}", intervalsPerBatch);
             }
             else
             {
@@ -112,18 +112,18 @@ namespace DataReader.Core
                 intervalsPerBatch = CalculateIntervalsPerBatch(summaryTypesCount, _tagsChunkSize);
             }
             
-            _logger.InfoFormat("Batch calculation: {0} tags in chunks of {1} × {2} summary types × {3} intervals = ~{4} events per chunk per batch",
+            _logger.Info("Batch calculation: {0} tags in chunks of {1} × {2} summary types × {3} intervals = ~{4} events per chunk per batch",
                 totalTags, _tagsChunkSize, summaryTypesCount, intervalsPerBatch, _tagsChunkSize * summaryTypesCount * intervalsPerBatch);
 
             var batchTimeRanges = SplitTimeRangeByIntervals(timeRange, _summaryInterval, intervalsPerBatch);
             
-            _logger.InfoFormat("Split time range into {0} time batches, each batch will process tags in parallel chunks", batchTimeRanges.Count);
+            _logger.Info("Split time range into {0} time batches, each batch will process tags in parallel chunks", batchTimeRanges.Count);
 
             // Split tags into chunks for parallel processing
             var tagChunks = query.PiPoints.ToList().ChunkBy(_tagsChunkSize);
             int totalChunks = tagChunks.Count();
             
-            _logger.InfoFormat("Split {0} tags into {1} chunks of up to {2} tags each", totalTags, totalChunks, _tagsChunkSize);
+            _logger.Info("Split {0} tags into {1} chunks of up to {2} tags each", totalTags, totalChunks, _tagsChunkSize);
 
             int batchIndex = 0;
 
@@ -132,14 +132,14 @@ namespace DataReader.Core
             {
                 if (cancelToken.IsCancellationRequested)
                 {
-                    _logger.WarnFormat("Cancellation requested, stopping processing");
+                    _logger.Warn("Cancellation requested, stopping processing");
                     break;
                 }
 
                 var batchStats = new StatisticsInfo();
                 batchStats.Stopwatch.Start();
 
-                _logger.DebugFormat("Time Batch {0}: Processing {1} tag chunks in parallel | Local: {2} to {3} | UTC: {4} to {5}", 
+                _logger.Debug("Time Batch {0}: Processing {1} tag chunks in parallel | Local: {2} to {3} | UTC: {4} to {5}", 
                     batchIndex, totalChunks,
                     batchTimeRange.StartTime.LocalTime, batchTimeRange.EndTime.LocalTime,
                     batchTimeRange.StartTime.UtcTime.ToIso8601Utc(), batchTimeRange.EndTime.UtcTime.ToIso8601Utc());
@@ -159,7 +159,7 @@ namespace DataReader.Core
                             var chunkPointList = new PIPointList(tagChunk);
                             PIPagingConfiguration pagingConfig = new PIPagingConfiguration(PIPageType.TagCount, 1000);
 
-                            _logger.DebugFormat("Time Batch {0}, Tag Chunk {1}: Processing {2} tags", 
+                            _logger.Debug("Time Batch {0}, Tag Chunk {1}: Processing {2} tags", 
                                 batchIndex, chunkIndex, tagChunk.Count);
 
                             var bulkResults = chunkPointList.Summaries(
@@ -206,12 +206,12 @@ namespace DataReader.Core
                                 }
                             }
 
-                            _logger.DebugFormat("Time Batch {0}, Tag Chunk {1}: Completed - {2} events retrieved", 
+                            _logger.Debug("Time Batch {0}, Tag Chunk {1}: Completed - {2} events retrieved", 
                                 batchIndex, chunkIndex, chunkEventCount);
                         }
                         catch (Exception ex)
                         {
-                            _logger.ErrorFormat("Error processing Time Batch {0}, Tag Chunk {1} - {2}", 
+                            _logger.Error("Error processing Time Batch {0}, Tag Chunk {1} - {2}", 
                                 batchIndex, chunkIndex, ex.Message);
                             chunkExceptions.Add(ex);
                         }
@@ -220,7 +220,7 @@ namespace DataReader.Core
                 // Check if any chunks had errors
                 if (chunkExceptions.Count > 0)
                 {
-                    _logger.WarnFormat("Time Batch {0}: {1} chunk(s) encountered errors", batchIndex, chunkExceptions.Count);
+                    _logger.Warn("Time Batch {0}: {1} chunk(s) encountered errors", batchIndex, chunkExceptions.Count);
                 }
 
                 // Send the aggregated batch data to the write queue
@@ -247,7 +247,7 @@ namespace DataReader.Core
                     };
 
                     _dataWriter.DataQueue.Add(writeInfo, cancelToken);
-                    _logger.DebugFormat("Time Batch {0}: Enqueued {1} summary events for writing", 
+                    _logger.Debug("Time Batch {0}: Enqueued {1} summary events for writing", 
                         batchIndex, batchSummaryData.Sum(b => b.Count));
                 }
                 
@@ -256,7 +256,7 @@ namespace DataReader.Core
                 batchStats.Stopwatch.Stop();
                 Statistics.StatisticsQueue.Add(batchStats, cancelToken);
                 
-                _logger.InfoFormat("SUMMARY-BULK Time Batch {0} processed - Duration: {1} ms, Events: {2}",
+                _logger.Info("SUMMARY-BULK Time Batch {0} processed - Duration: {1} ms, Events: {2}",
                     batchIndex, batchStats.Stopwatch.ElapsedMilliseconds, batchStats.EventsCount);
                 
                 batchIndex++;

@@ -19,7 +19,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using log4net;
+using NLog;
 
 namespace DataReader.Core
 {
@@ -32,7 +32,7 @@ namespace DataReader.Core
     {
 
 
-        private readonly ILog _logger = LogManager.GetLogger(typeof(Statistics));
+        // _logger is inherited from TaskBase
         private readonly Stopwatch _stopwatch = new Stopwatch();
 
         private static readonly BlockingCollection<StatisticsInfo> _statisticsQueue = new BlockingCollection<StatisticsInfo>();
@@ -97,7 +97,7 @@ namespace DataReader.Core
                     if (statInfo.Print)
                     {
 
-                        _logger.InfoFormat(
+                        _logger.Info(
                             "READ STATS - global-> processing rate: {0:#00.00} events/sec | Total Events: {1:#000} | Duration: {2:g} | WriteQ: {3}"
                             , Math.Round(_totalEventsCount / _stopwatch.Elapsed.TotalSeconds, 2)
                             , _totalEventsCount
@@ -109,7 +109,7 @@ namespace DataReader.Core
 
                         if (statInfo.EventsCount > 0)
                         {
-                            _logger.InfoFormat(
+                            _logger.Info(
                                 "READ STATS - Last query-> processing rate: {0:#00.00} events/sec | Total Events: {1:#000} | Duration: {2:g}"
                                 , statInfo.EventsProcessedPerSecond
                                 , statInfo.EventsCount
@@ -124,13 +124,13 @@ namespace DataReader.Core
                 }
 
             }
-            catch (OperationCanceledException cEx)
+            catch (OperationCanceledException)
             {
 
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                _logger.Error(ex, ex.Message);
             }
 
         }
@@ -160,7 +160,7 @@ namespace DataReader.Core
                 elapseCPUinMillisec = totcpu.TotalMilliseconds;
                 usercpu = curProcess.UserProcessorTime;
 
-                _logger.InfoFormat("SYSTEM STATS - totcpu {0:F0} usrcpu {1:F0} Privbyte {2} virtbyte {3} CLR {4} GC0 {5},GC1 {6},GC2 {7}",
+                _logger.Info("SYSTEM STATS - totcpu {0:F0} usrcpu {1:F0} Privbyte {2} virtbyte {3} CLR {4} GC0 {5},GC1 {6},GC2 {7}",
                      elapseCPUinMillisec, usercpu.TotalMilliseconds,
                     (curProcess.PrivateMemorySize64 / convfactor), (curProcess.VirtualMemorySize64 / convfactor),
                     (GC.GetTotalMemory(false) / convfactor), GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2));

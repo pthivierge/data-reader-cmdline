@@ -18,8 +18,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using log4net;
-using log4net.Filter;
+using NLog;
+
 
 namespace DataReader.Core
 {
@@ -27,15 +27,15 @@ namespace DataReader.Core
     {
 
 
-        private readonly ILog _logger = LogManager.GetLogger(typeof(FiltersFactory));
-        private string[] _digitalStatesToIgnore;
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
         
         private List<IDataFilter> _filters=new List<IDataFilter>();
 
 
         public void AddFilter(IDataFilter filter)
         {
-            _logger.InfoFormat("Added {0}.  Will be used to process each of the values.",filter.GetType().Name);
+            _logger.Info("Added {0}.  Will be used to process each of the values.",filter.GetType().Name);
             _filters.Add(filter);
         }
 

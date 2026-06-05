@@ -19,8 +19,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using log4net;
-using log4net.Repository.Hierarchy;
+using NLog;
+
 
 namespace DataReader.Core
 {
@@ -32,7 +32,7 @@ namespace DataReader.Core
     public class DataReaderSettings
     {
 
-        private readonly ILog _logger = LogManager.GetLogger(typeof(DataReaderSettings));
+        private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private ReadingType _dataReadType = ReadingType.Bulk;
         private int _tagGroupSize = 50000;
         private int _maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 16);
@@ -154,7 +154,7 @@ namespace DataReader.Core
                 BulkParallelChunkSize = (TagGroupSize/5) <=1 ? 1 : (TagGroupSize / 5);
 
 
-                _logger.DebugFormat("Autotune calculated: daysPerRead {0} - BulkParallelChunkSize {1}",daysPerRead,BulkParallelChunkSize);
+                _logger.Debug("Autotune calculated: daysPerRead {0} - BulkParallelChunkSize {1}",daysPerRead,BulkParallelChunkSize);
 
             }
             else
