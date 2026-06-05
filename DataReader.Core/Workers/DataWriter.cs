@@ -131,36 +131,43 @@ namespace DataReader.Core
 
                             IDataFilter[] dataFilters=null;
 
-                            // Create time-sortable filename: start with timestamp, then add identifiers for uniqueness
-                            // Format: {base}_{startTime}_{chunkId}_{subChunkId}[_summary]_w{writer}.csv
-                            // This ensures chronological sorting while maintaining uniqueness
-                            var fileName = string.Format("{0}_{1}_{2}_{3}",
-                                _baseOutputFileName,
-                                writeInfo.StartTime.ToString("yyyy-MM-dd_HH-mm-ss"),
-                                writeInfo.ChunkId,
-                                writeInfo.SubChunkId);
-                            
+                            // Stable, writer-scoped output name so rows accumulate into a single
+                            // file until eventsPerFile is reached. FileWriter appends _w{writer}
+                            // and rolls to _p{n} on overflow, so a batch no longer means a new file.
+                            var fileName = _baseOutputFileName;
+
                             if (writeInfo.IsSummaryData)
                             {
                                 fileName += "_summary";
                             }
 
-                            writer.SetName(fileName);
-
-
                             if (_filtersFactory != null)
                                 dataFilters = _filtersFactory.GetFilters();
 
-                            if (writeInfo.IsSummaryData && writeInfo.Metadata != null)
+                            // The header is written once per physical file (on create and on each
+                            // roll), not once per batch, so each file has a single column-header row.
+                            // SetHeader must be called before SetName so the first file gets it.
+                            if (writeInfo.IsSummaryData)
                             {
-                                writer.WriteLine("# Summary Data Export");
-                                writer.WriteLine(string.Format("# Generated (Local Time): {0}", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz")));
-                                foreach (var kvp in writeInfo.Metadata)
+                                var header = new List<string>
                                 {
-                                    writer.WriteLine(string.Format("# {0}: {1}", kvp.Key, kvp.Value));
+                                    "# Summary Data Export",
+                                    string.Format("# Generated (Local Time): {0}", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz"))
+                                };
+                                if (writeInfo.Metadata != null)
+                                {
+                                    foreach (var kvp in writeInfo.Metadata)
+                                        header.Add(string.Format("# {0}: {1}", kvp.Key, kvp.Value));
                                 }
-                                writer.WriteLine(QuoteCsvField("Timestamp") + _listSeparator + QuoteCsvField("Value") + _listSeparator + QuoteCsvField("TagName") + _listSeparator + QuoteCsvField("AggregateType"));
+                                header.Add(QuoteCsvField("Timestamp") + _listSeparator + QuoteCsvField("Value") + _listSeparator + QuoteCsvField("TagName") + _listSeparator + QuoteCsvField("AggregateType"));
+                                writer.SetHeader(header);
                             }
+                            else
+                            {
+                                writer.SetHeader(null);
+                            }
+
+                            writer.SetName(fileName);
 
                             // Summary export: use stable row DTOs when provided
                             if (writeInfo.IsSummaryData && writeInfo.SummaryRecords != null)

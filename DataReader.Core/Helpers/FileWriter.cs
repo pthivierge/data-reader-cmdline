@@ -33,6 +33,7 @@ namespace DataReader.Core
 
         private string _writerIndex;
         private int _eventsPerFile;
+        private string[] _header = new string[0];
 
         public Task ActiveTask { get; set; }
 
@@ -49,6 +50,15 @@ namespace DataReader.Core
                 _fileName = fileName;
                 CreateNewFile(_fileName);
             }
+        }
+
+        /// <summary>
+        /// Sets the header lines written at the top of every physical file produced by
+        /// this writer (the initial file and each rolled file). Call before SetName.
+        /// </summary>
+        public void SetHeader(IEnumerable<string> header)
+        {
+            _header = header == null ? new string[0] : header.ToArray();
         }
 
         public void WriteLine(string line)
@@ -92,7 +102,12 @@ namespace DataReader.Core
                 _streamWriter = new StreamWriter(_fileStream);
 
                 _lineCount = 0;
-                
+
+                // Header goes at the top of every physical file (initial + each roll).
+                // Not counted toward _lineCount so eventsPerFile measures data rows only.
+                foreach (var headerLine in _header)
+                    _streamWriter.WriteLine(headerLine);
+
                 _logger.Info("Created a new file: {0}.", fullFileName);
             }
             catch (Exception ex)
