@@ -35,7 +35,7 @@ namespace DataReader.Core
         private readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private ReadingType _dataReadType = ReadingType.Bulk;
         private int _tagGroupSize = 50000;
-        private int _maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 16);
+        private int _maxDegreeOfParallelism = 4;
         private TimeSpan _timeIntervalPerDataRequest = TimeSpan.FromDays(1);
         private int _bulkParallelChunkSize = 10000;
         private int _bulkPageSize = 1000;
@@ -79,9 +79,10 @@ namespace DataReader.Core
         }
 
         /// <summary>
-        /// Defines the maximum number of threads to be used.
-        /// PI Data Archive has 16 threads to server bulk calls, so it may be good to limit a little
-        /// Default: Math.Min(Environment.ProcessorCount, 16)
+        /// Maximum number of concurrent bulk calls (RecordedValues/Summaries) issued to the PI
+        /// Data Archive. The server serves bulk calls from a small thread pool, so this is capped
+        /// low to avoid saturating it. Used by BOTH the raw and summary read paths. Default: 4.
+        /// (Reportedly ~4 bulk threads server-side; raise only if you know your server limit.)
         /// </summary>
         public int MaxDegreeOfParallelism
         {
