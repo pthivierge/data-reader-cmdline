@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>DataReader.CommandLine</RootNamespace>
     <AssemblyName>DataReader</AssemblyName>
     <PlatformTarget>x64</PlatformTarget>
@@ -11,7 +11,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <!-- The AssemblyVersion("1.0.*") wildcard requires a non-deterministic build -->
     <Deterministic>false</Deterministic>
-    <!-- Output to bin\Debug\ (no net8.0 sub-folder) to match the original layout -->
+    <!-- Output to bin\Debug\ (no net10.0 sub-folder) to match the original layout -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <!-- Was gcServer enabled="true" in the old app.config -->
     <ServerGarbageCollection>true</ServerGarbageCollection>
@@ -23,6 +23,9 @@
     <PackageReference Include="Aveva.AFSDK" Version="3.2.0.52" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="NLog" Version="6.1.3" />
+    <!-- Pinned to a patched version: on net10 the AF SDK pulls a vulnerable 9.0.0
+         transitively, flagged NU1903. Direct reference overrides the transitive one. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,10 +38,10 @@
     </Content>
   </ItemGroup>
 
-  <!-- Copy the full build output into the repository Build folder. .NET 8 needs the exe,
+  <!-- Copy the full build output into the repository Build folder. .NET 10 needs the exe,
        its dependency dlls, and the *.json runtime config side-by-side (the old
        "exe in root / dlls in bin" split relied on app.config privatePath probing,
-       which .NET 8 does not support). -->
+       which .NET 10 does not support). -->
   <Target Name="CopyToBuildFolder" AfterTargets="Build">
     <Exec Command="robocopy &quot;$(TargetDir).&quot; &quot;$(ProjectDir)..\Build&quot; /E /XO /NJH /NJS /NP &amp; if %25errorlevel%25 GEQ 8 (exit 1) else (exit 0)" />
   </Target>

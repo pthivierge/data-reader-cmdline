@@ -17,7 +17,7 @@ The application supports two modes accessed via verbs:
 
 The project was modernized and its extraction performance was significantly improved:
 
-- **Migrated to .NET 8** and the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client install is required to build or run (see Prerequisites).
+- **Migrated to .NET 10** and the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client install is required to build or run (see Prerequisites).
 - **Logging moved to NLog** (configured via `NLog.config`), replacing log4net.
 - **File output now respects `--eventsPerFile`.** The summary path used to create one file per internal batch (thousands of tiny files on long extractions); rows now accumulate into stable, writer-scoped files that roll only when `--eventsPerFile` is reached.
 - **Coordinated summary batching** so each bulk call to the PI Data Archive targets about 10,000 events (one value plus timestamp per tag), the sweet spot for the server bulk API. See [Performance and Tuning](#performance-and-tuning).
@@ -27,7 +27,7 @@ Measured on a 3-year / 10-tag / 10-minute summary extraction: about 2x faster en
 
 # Build
 
-The application targets **.NET 8** and references the AVEVA AF SDK through the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client installation is required to build. Build with Visual Studio 2022+ or from the command line:
+The application targets **.NET 10** and references the AVEVA AF SDK through the [`Aveva.AFSDK`](https://www.nuget.org/packages/Aveva.AFSDK) NuGet package, so no local PI AF Client installation is required to build. Build with Visual Studio 2022+ or from the command line:
 
 ```
 dotnet build data-reader.sln -c Release
@@ -37,8 +37,8 @@ Once compiled, it creates a **Build** folder in the solution folder. You can tak
 
 # Prerequisites on host system
 
-* [.NET 8 Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64)
-* [Microsoft Visual C++ Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) — required by the .NET 8 AF SDK
+* [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64)
+* [Microsoft Visual C++ Redistributable (x64)](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) — required by the AF SDK
 * Windows (the AF SDK is Windows-only)
 
 > A local PI AF Client install is **not** required on the host: the AF SDK and its plug-ins are bundled with the application via the `Aveva.AFSDK` NuGet package.
