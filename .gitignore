@@ -194,3 +194,8 @@ FakesAssemblies/
 
 # Visual Studio 6 workspace options file
 *.opt
+
+# Build / publish artifacts (self-contained publish output and zipped bundles)
+publish-win-x64/
+publish-*/
+*.zip
